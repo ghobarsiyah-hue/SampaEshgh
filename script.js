@@ -23,7 +23,7 @@ let appData = {
     subjects: ["ریاضی", "فیزیک", "شیمی", "ادبیات", "زبان انگلیسی"],
     subjectChapters: {
         "ریاضی": ["جبر و معادله", "هندسه", "احتمال و آمار", "مثلثات", "حسابان"],
-        "فیزیک": ["الکتریسیته", "مکانیک", "نور", "حرارت"],
+        "فیزیک": ["الکتریسیته", "مکانیک","نوسان و موج", "نیرو"],
         "شیمی": ["استوکیومتری", "اسید و باز", "شیمی آلی"],
         "ادبیات": ["دستور زبان", "تاریخ ادبیات", "آرایه های ادبی"],
         "زبان انگلیسی": ["گرامر", "لغات", "درک مطلب"]
@@ -935,31 +935,46 @@ function shuffleArray(array) {
 }
 
 // تولید پیش‌نمایش آزمون
+// تابع جایگزین برای پیش‌نمایش آزمون
 function generateExamPreview(questions, title, time) {
     const previewContent = document.getElementById('previewContent');
     let html = `
-        <div class="exam-header">
-            <h2>${title}</h2>
-            <p>زمان آزمون: ${time} دقیقه</p>
-            <p>تعداد سوالات: ${questions.length}</p>
+        <div class="exam-header bg-blue-50 p-6 rounded-lg mb-6">
+            <h2 class="text-2xl font-bold text-blue-800 mb-2">${title}</h2>
+            <div class="flex flex-wrap gap-4 text-sm text-blue-600">
+                <div class="flex items-center">
+                    <i class="fas fa-clock ml-2"></i>
+                    <span>زمان آزمون: ${time} دقیقه</span>
+                </div>
+                <div class="flex items-center">
+                    <i class="fas fa-question-circle ml-2"></i>
+                    <span>تعداد سوالات: ${questions.length}</span>
+                </div>
+                <div class="flex items-center">
+                    <i class="fas fa-calendar ml-2"></i>
+                    <span>تاریخ: ${new Date().toLocaleDateString('fa-IR')}</span>
+                </div>
+            </div>
         </div>
+        <div class="space-y-6">
     `;
 
     questions.forEach((question, index) => {
         html += `
-            <div class="question-item mb-6">
-                <div class="flex items-start mb-3">
-                    <span class="question-number">${index + 1}</span>
-                    <p class="text-justify flex-1">${question.text}</p>
+            <div class="question-item bg-white p-6 rounded-lg border border-blue-200 shadow-sm">
+                <div class="flex items-start mb-4">
+                    <span class="question-number bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ml-3 flex-shrink-0">${index + 1}</span>
+                    <p class="text-justify flex-1 text-blue-900 leading-7">${question.text}</p>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 pr-8">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pr-8">
         `;
 
         question.options.forEach((option, optIndex) => {
+            const optionChar = String.fromCharCode(1570 + optIndex);
             html += `
-                <div class="flex items-center">
-                    <span class="bg-gray-100 text-gray-800 rounded-md px-3 py-2 border border-gray-300 ml-2">${String.fromCharCode(1570 + optIndex)}</span>
-                    <span>${option}</span>
+                <div class="flex items-center bg-blue-50 p-3 rounded-lg border border-blue-100">
+                    <span class="bg-blue-100 text-blue-800 rounded-md px-3 py-1 border border-blue-200 ml-2 font-bold">${optionChar}</span>
+                    <span class="text-blue-800 flex-1">${option}</span>
                 </div>
             `;
         });
@@ -967,6 +982,7 @@ function generateExamPreview(questions, title, time) {
         html += `</div></div>`;
     });
 
+    html += `</div>`;
     previewContent.innerHTML = html;
 }
 
@@ -979,56 +995,143 @@ document.getElementById('generateExam').addEventListener('click', function() {
     generatePDF();
 });
 
-// تابع تولید PDF با پشتیبانی از فارسی
+// === تابع تولید PDF با jsPDF و autoTable ===
 function generatePDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    
-    const title = document.getElementById('examTitle').value || "آزمون نمونه";
-    const time = document.getElementById('examTime').value;
-    const questions = getSelectedQuestions();
-
-    // تنظیم جهت راست به چپ
-    doc.setLanguage('fa');
-    
-    // هدر آزمون
-    doc.setFontSize(18);
-    doc.text(title, 105, 20, { align: 'center' });
-    doc.setFontSize(12);
-    doc.text(`زمان آزمون: ${time} دقیقه`, 105, 30, { align: 'center' });
-    doc.text(`تعداد سوالات: ${questions.length}`, 105, 40, { align: 'center' });
-    
-    let yPosition = 60;
-    
-    // اضافه کردن سوالات
-    questions.forEach((question, index) => {
-        if (yPosition > 270) {
-            doc.addPage();
-            yPosition = 20;
-        }
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
         
-        doc.setFontSize(14);
-        const questionText = `${index + 1}. ${question.text}`;
-        const splitQuestion = doc.splitTextToSize(questionText, 170);
-        doc.text(splitQuestion, 20, yPosition);
-        yPosition += splitQuestion.length * 7;
+        const title = document.getElementById('examTitle').value || "آزمون نمونه";
+        const time = document.getElementById('examTime').value;
+        const questions = getSelectedQuestions();
         
-        doc.setFontSize(12);
-        question.options.forEach((option, optIndex) => {
-            const optionText = `   ${String.fromCharCode(1570 + optIndex)}) ${option}`;
-            const splitOption = doc.splitTextToSize(optionText, 170);
-            doc.text(splitOption, 25, yPosition);
-            yPosition += splitOption.length * 6;
+        // عنوان اصلی
+        doc.setFontSize(16);
+        doc.setTextColor(30, 64, 175); // رنگ آبی تیره
+        doc.text(title, 105, 20, { align: 'center' });
+        
+        // اطلاعات آزمون
+        doc.setFontSize(10);
+        doc.setTextColor(107, 114, 128); // رنگ خاکستری
+        doc.text(`زمان آزمون: ${time} دقیقه`, 105, 30, { align: 'center' });
+        doc.text(`تعداد سوالات: ${questions.length}`, 105, 35, { align: 'center' });
+        doc.text(`تاریخ: ${new Date().toLocaleDateString('fa-IR')}`, 105, 40, { align: 'center' });
+        
+        let yPosition = 50;
+        
+        // اضافه کردن سوالات
+        questions.forEach((question, index) => {
+            // اگر جای کافی نیست، صفحه جدید ایجاد کن
+            if (yPosition > 270) {
+                doc.addPage();
+                yPosition = 20;
+            }
+            
+            // شماره سوال
+            doc.setFontSize(12);
+            doc.setTextColor(59, 130, 246); // رنگ آبی
+            doc.text(`سوال ${index + 1}:`, 20, yPosition);
+            yPosition += 7;
+            
+            // متن سوال
+            doc.setFontSize(10);
+            doc.setTextColor(0, 0, 0); // رنگ سیاه
+            
+            const questionLines = doc.splitTextToSize(question.text, 170);
+            doc.text(questionLines, 25, yPosition);
+            yPosition += questionLines.length * 5 + 5;
+            
+            // گزینه‌ها
+            question.options.forEach((option, optIndex) => {
+                if (yPosition > 270) {
+                    doc.addPage();
+                    yPosition = 20;
+                }
+                
+                const optionChar = String.fromCharCode(1570 + optIndex);
+                const optionText = `   ${optionChar}) ${option}`;
+                const optionLines = doc.splitTextToSize(optionText, 160);
+                
+                doc.text(optionLines, 30, yPosition);
+                yPosition += optionLines.length * 4.5 + 2;
+            });
+            
+            yPosition += 8;
+            
+            // خط جداکننده (به جز برای آخرین سوال)
+            if (index < questions.length - 1 && yPosition < 270) {
+                doc.setDrawColor(200, 200, 200);
+                doc.line(20, yPosition, 190, yPosition);
+                yPosition += 12;
+            }
         });
         
-        yPosition += 10;
-    });
-    
-    // ذخیره فایل
-    doc.save(`${title}.pdf`);
-    showNotification('آزمون با موفقیت تولید شد', 'success');
+        // شماره صفحات
+        const pageCount = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setTextColor(128, 128, 128);
+            doc.text(`صفحه ${i} از ${pageCount}`, 105, 285, { align: 'center' });
+        }
+        
+        // ذخیره فایل
+        const fileName = `${title.replace(/[/\\?%*:|"<>]/g, '-')}.pdf`;
+        doc.save(fileName);
+        showNotification(`آزمون "${title}" با موفقیت دانلود شد`, 'success');
+        
+    } catch (error) {
+        console.error('خطا در تولید PDF:', error);
+        showNotification('خطا در تولید PDF. لطفاً دوباره تلاش کنید', 'error');
+    }
 }
 
+// === تابع جایگزین ساده‌تر در صورت مشکل ===
+function generatePDFSimple() {
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        const title = document.getElementById('examTitle').value || "آزمون نمونه";
+        const questions = getSelectedQuestions();
+        
+        let content = `${title}\n\n`;
+        
+        questions.forEach((question, index) => {
+            content += `سوال ${index + 1}: ${question.text}\n\n`;
+            
+            question.options.forEach((option, optIndex) => {
+                const optionChar = String.fromCharCode(1570 + optIndex);
+                content += `   ${optionChar}) ${option}\n`;
+            });
+            
+            content += '\n' + '='.repeat(50) + '\n\n';
+        });
+        
+        doc.text(content, 10, 10);
+        doc.save(`${title}.pdf`);
+        showNotification('آزمون با موفقیت دانلود شد', 'success');
+        
+    } catch (error) {
+        console.error('خطا در تولید PDF:', error);
+        showNotification('خطا در تولید PDF. لطفاً از روش پیش‌نمایش استفاده کنید', 'error');
+    }
+}
+
+// === تابع کمکی برای بررسی PDF ===
+function testPDF() {
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.text('تست فونت فارسی - Hello World', 10, 10);
+        doc.save('test.pdf');
+        showNotification('PDF تست با موفقیت ایجاد شد', 'success');
+        return true;
+    } catch (error) {
+        showNotification('خطا در ایجاد PDF تست', 'error');
+        return false;
+    }
+}
 // گرفتن سوالات انتخابی
 function getSelectedQuestions() {
     const subject = document.getElementById('examSubject').value;
@@ -1112,25 +1215,108 @@ function deleteUser(userId) {
 }
 
 // مدیریت موضوعات
+// اضافه کردن این تابع برای بروزرسانی تمام dropdownهای موضوع
+function updateAllSubjectDropdowns() {
+    const dropdownIds = [
+        'questionSubject',
+        'adminQuestionSubject', 
+        'examSubject',
+        'builderSubject',
+        'editQuestionSubject'
+    ];
+    
+    dropdownIds.forEach(dropdownId => {
+        const dropdown = document.getElementById(dropdownId);
+        if (dropdown) {
+            // ذخیره مقدار فعلی
+            const currentValue = dropdown.value;
+            
+            // پاک کردن options فعلی
+            dropdown.innerHTML = '<option value="">انتخاب موضوع</option>';
+            
+            // اضافه کردن موضوعات جدید
+            appData.subjects.forEach(subject => {
+                const option = document.createElement('option');
+                option.value = subject;
+                option.textContent = subject;
+                dropdown.appendChild(option);
+            });
+            
+            // بازگرداندن مقدار قبلی اگر هنوز وجود دارد
+            if (appData.subjects.includes(currentValue)) {
+                dropdown.value = currentValue;
+            }
+            
+            // بروزرسانی مباحث اگر dropdown مربوطه وجود دارد
+            if (dropdownId === 'questionSubject') {
+                updateChapterOptions(currentValue, 'questionChapter');
+            } else if (dropdownId === 'adminQuestionSubject') {
+                updateChapterOptions(currentValue, 'adminQuestionChapter');
+            } else if (dropdownId === 'examSubject') {
+                updateChapterOptions(currentValue, 'examChapter');
+            } else if (dropdownId === 'builderSubject') {
+                updateChapterOptions(currentValue, 'builderChapter');
+            }
+        }
+    });
+}
+
+// به روزرسانی توابع مدیریت موضوعات
 function editSubject(oldSubject) {
     const newSubject = prompt('موضوع جدید را وارد کنید:', oldSubject);
     if (newSubject && newSubject.trim()) {
-        // به روزرسانی موضوع در لیست
         const index = appData.subjects.indexOf(oldSubject);
         if (index !== -1) {
             appData.subjects[index] = newSubject.trim();
             
-            // به روزرسانی مباحث مربوطه
             if (appData.subjectChapters[oldSubject]) {
                 appData.subjectChapters[newSubject.trim()] = appData.subjectChapters[oldSubject];
                 delete appData.subjectChapters[oldSubject];
             }
+            
+            // بروزرسانی تمام dropdownها
+            updateAllSubjectDropdowns();
             
             showNotification('موضوع با موفقیت ویرایش شد', 'success');
             renderAdminData();
         }
     }
 }
+
+function deleteSubject(subject) {
+    if (confirm(`آیا از حذف موضوع "${subject}" اطمینان دارید؟`)) {
+        appData.subjects = appData.subjects.filter(s => s !== subject);
+        delete appData.subjectChapters[subject];
+        
+        // بروزرسانی تمام dropdownها
+        updateAllSubjectDropdowns();
+        
+        showNotification('موضوع با موفقیت حذف شد', 'success');
+        renderAdminData();
+    }
+}
+
+// به روزرسانی تابع افزودن موضوع جدید
+document.getElementById('addSubjectButton').addEventListener('click', function() {
+    const newSubjectInput = document.getElementById('newSubjectInput');
+    const newSubject = newSubjectInput.value.trim();
+    
+    if (newSubject) {
+        if (appData.subjects.includes(newSubject)) {
+            showNotification('این موضوع قبلاً وجود دارد', 'error');
+        } else {
+            appData.subjects.push(newSubject);
+            appData.subjectChapters[newSubject] = [];
+            
+            // بروزرسانی تمام dropdownها
+            updateAllSubjectDropdowns();
+            
+            showNotification('موضوع با موفقیت اضافه شد', 'success');
+            newSubjectInput.value = '';
+            renderAdminData();
+        }
+    }
+});
 
 function deleteSubject(subject) {
     if (confirm(`آیا از حذف موضوع "${subject}" اطمینان دارید؟`)) {
@@ -1179,6 +1365,87 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelector('#systemSettings button').addEventListener('click', function() {
         showNotification('تنظیمات با موفقیت ذخیره شد', 'success');
     });
+});
+// اضافه کردن این توابع برای مدیریت ذخیره اطلاعات لاگین
+function saveLoginCredentials(username, password) {
+    const loginData = {
+        username: username,
+        password: password,
+        timestamp: new Date().getTime()
+    };
+    localStorage.setItem('rememberedLogin', JSON.stringify(loginData));
+}
 
+function getSavedLoginCredentials() {
+    const saved = localStorage.getItem('rememberedLogin');
+    if (saved) {
+        const loginData = JSON.parse(saved);
+        // بررسی اینکه اطلاعات بیش از 30 روز قدیمی نباشند
+        const oneMonth = 30 * 24 * 60 * 60 * 1000;
+        if (new Date().getTime() - loginData.timestamp < oneMonth) {
+            return loginData;
+        } else {
+            localStorage.removeItem('rememberedLogin');
+        }
+    }
+    return null;
+}
+
+function clearSavedLoginCredentials() {
+    localStorage.removeItem('rememberedLogin');
+}
+
+// به روزرسانی فرم لاگین در HTML (اضافه کردن چک‌باکس)
+// این کد را به فرم لاگین در HTML اضافه کنید:
+/*
+<div class="flex items-center mb-4">
+    <input type="checkbox" id="rememberMe" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
+    <label for="rememberMe" class="mr-2 text-sm font-medium text-gray-900">مرا به خاطر بسپار</label>
+</div>
+*/
+
+// به روزرسانی مدیریت لاگین
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const rememberMe = document.getElementById('rememberMe').checked;
+    
+    if (!validateLoginForm(username, password)) {
+        return;
+    }
+    
+    // بررسی ورود به عنوان ادمین
+    const isAdmin = adminCredentials.some(cred => 
+        cred.username === username && cred.password === password
+    );
+    
+    if (isAdmin) {
+        // ذخیره اطلاعات اگر چک‌باکس فعال باشد
+        if (rememberMe) {
+            saveLoginCredentials(username, password);
+        } else {
+            clearSavedLoginCredentials();
+        }
+        
+        document.getElementById('authPage').classList.add('hidden');
+        document.getElementById('adminPanel').classList.remove('hidden');
+        showNotification('خوش آمدید مدیر سیستم!', 'success');
+        renderAdminData();
+    } else {
+        showNotification('نام کاربری یا رمز عبور اشتباه است', 'error');
+    }
 });
 
+// بارگذاری اطلاعات ذخیره شده هنگام لود صفحه
+document.addEventListener('DOMContentLoaded', function() {
+    const savedCredentials = getSavedLoginCredentials();
+    if (savedCredentials) {
+        document.getElementById('username').value = savedCredentials.username;
+        document.getElementById('password').value = savedCredentials.password;
+        document.getElementById('rememberMe').checked = true;
+    }
+    
+    // بقیه کدهای initialization...
+});
