@@ -1,7 +1,7 @@
 // اطلاعات ادمین
 const adminCredentials = [
     { username: "Salar", password: "8711" },
-    { username: "Miaad", password: "9248" }
+    { username: "Miaad", password: "9248" },
     { username: "Hasti", password: "1304" }
 ];
 
@@ -1181,3 +1181,4 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
 });
+
