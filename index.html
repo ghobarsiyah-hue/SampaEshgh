@@ -2,6 +2,8 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>سمپا - سامانه مدیریت پرسش و پاسخ</title>
     <link rel="stylesheet" href="style.css">
@@ -9,6 +11,8 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
 </head>
 <body class="bg-blue-50">
     <!-- اعلان‌ها -->
@@ -286,15 +290,57 @@
                 </p>
             </div>
             
-            <form id="loginForm" class="mt-8 space-y-6">
-                <div class="rounded-md shadow-sm -space-y-px">
-                    <div>
-                        <label for="username" class="sr-only">نام کاربری</label>
-                        <input id="username" name="username" type="text" required maxlength="5" pattern="[A-Za-z]{5}" class="appearance-none rounded-none relative block w-full px-3 py-3 border border-blue-300 placeholder-blue-500 text-blue-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10" placeholder="نام کاربری (5 حرف)">
+<form id="loginForm" class="mt-8 space-y-6">
+    <div class="rounded-md shadow-sm -space-y-px">
+        <div>
+            <label for="username" class="sr-only">نام کاربری</label>
+            <input id="username" name="username" type="text" required maxlength="5" pattern="[A-Za-z]{5}" 
+                   class="appearance-none rounded-none relative block w-full px-4 py-4 border-2 border-blue-200 placeholder-blue-400 text-blue-800 rounded-t-md focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 focus:z-10 transition-all duration-200" 
+                   placeholder="نام کاربری (5 حرف)">
+        </div>
+        <div>
+            <label for="password" class="sr-only">رمز عبور</label>
+            <input id="password" name="password" type="password" required minlength="4" pattern="\d{4,}" 
+                   class="appearance-none rounded-none relative block w-full px-4 py-4 border-2 border-blue-200 placeholder-blue-400 text-blue-800 rounded-b-md focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 focus:z-10 transition-all duration-200" 
+                   placeholder="رمز عبور (حداقل 4 عدد)">
+        </div>
+    </div>
+
+    <!-- چک‌باکس مرا به خاطر بسپار -->
+    <div class="flex items-center justify-start pt-2">
+        <div class="relative flex items-center">
+            <input type="checkbox" id="rememberMe" class="hidden">
+            <label for="rememberMe" class="flex items-center cursor-pointer group">
+                <div class="relative">
+                    <div class="w-7 h-7 border-2 border-blue-300 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 group-hover:border-blue-500 group-hover:shadow-lg bg-gradient-to-br from-white to-blue-50 shadow-inner">
+                        <svg class="w-4 h-4 text-white opacity-0 transition-all duration-300 transform scale-50" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
                     </div>
-                    <div>
-                        <label for="password" class="sr-only">رمز عبور</label>
-                        <input id="password" name="password" type="password" required minlength="4" pattern="\d{4,}" class="appearance-none rounded-none relative block w-full px-3 py-3 border border-blue-300 placeholder-blue-500 text-blue-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10" placeholder="رمز عبور (حداقل 4 عدد)">
+                    <!-- افکت پالس هنگام کلیک -->
+                    <div class="absolute inset-0 rounded-lg bg-blue-400 opacity-0 scale-150 transition-all duration-300 pointer-events-none"></div>
+                </div>
+                <span class="text-blue-700 font-bold text-base transition-all duration-200 group-hover:text-blue-800 select-none relative mr-2">
+                    مرا به خاطر بسپار
+                    <span class="absolute bottom-0 right-0 w-0 h-1 bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-300 group-hover:w-full rounded-full"></span>
+                </span>
+            </label>
+        </div>
+    </div>
+
+    <!-- دکمه ورود -->
+    <div>
+        <button type="submit" 
+                class="group relative w-full flex justify-center py-4 px-4 border border-transparent text-lg font-bold rounded-md text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 transition-all duration-300 transform hover:-translate-y-0.5 shadow-lg hover:shadow-xl">
+            <span class="absolute right-0 inset-y-0 flex items-center pr-3">
+                <i class="fas fa-sign-in-alt text-blue-200 group-hover:text-white transition-colors duration-300"></i>
+            </span>
+            ورود به سیستم
+        </button>
+    </div>
+</form>
+</div>
+</div>
                     </div>
                 </div>
 
