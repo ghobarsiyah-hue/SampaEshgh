@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سمپا - سامانه مدیریت پرسش و پاسخ</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body class="bg-blue-50">
+    <!-- اعلان‌ها -->
+    <div id="notification" class="notification"></div>
+
+    <!-- مودال ویرایش سوال -->
+    <div id="editQuestionModal" class="modal">
+        <div class="modal-content p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-blue-800">ویرایش کامل سوال</h3>
+                <button id="closeEditModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="editQuestionForm">
+                <input type="hidden" id="editQuestionId">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="editQuestionSubject" class="block text-sm font-medium text-blue-700 mb-1">موضوع سوال</label>
+                        <select id="editQuestionSubject" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option>ریاضی</option>
+                            <option>فیزیک</option>
+                            <option>شیمی</option>
+                            <option>ادبیات</option>
+                            <option>زبان انگلیسی</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="editQuestionChapter" class="block text-sm font-medium text-blue-700 mb-1">مبحث درسی</label>
+                        <select id="editQuestionChapter" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option>جبر و معادله</option>
+                            <option>هندسه</option>
+                            <option>احتمال و آمار</option>
+                            <option>مثلثات</option>
+                            <option>حسابان</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="editQuestionLevel" class="block text-sm font-medium text-blue-700 mb-1">سطح دشواری</label>
+                        <select id="editQuestionLevel" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="easy">آسان</option>
+                            <option value="medium">متوسط</option>
+                            <option value="hard">دشوار</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-blue-700 mb-1">امتیاز سوال</label>
+                        <div class="p-2 bg-blue-50 rounded-md text-center">
+                            <span id="editScoreValue" class="text-lg font-bold text-blue-700">۱۵</span>
+                            <span class="text-blue-600"> امتیاز</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label for="editQuestionText" class="block text-sm font-medium text-blue-700 mb-1">متن سوال</label>
+                    <textarea id="editQuestionText" rows="4" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="متن سوال..."></textarea>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-blue-700 mb-1">گزینه‌ها</label>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="flex items-center">
+                            <span class="bg-blue-100 text-blue-800 rounded-l-md px-3 py-2 border border-blue-300">۱</span>
+                            <input type="text" id="editOption1" class="flex-1 px-3 py-2 border border-blue-300 border-r-0 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="گزینه اول">
+                        </div>
+                        <div class="flex items-center">
+                            <span class="bg-blue-100 text-blue-800 rounded-l-md px-3 py-2 border border-blue-300">۲</span>
+                            <input type="text" id="editOption2" class="flex-1 px-3 py-2 border border-blue-300 border-r-0 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="گزینه دوم">
+                        </div>
+                        <div class="flex items-center">
+                            <span class="bg-blue-100 text-blue-800 rounded-l-md px-3 py-2 border border-blue-300">۳</span>
+                            <input type="text" id="editOption3" class="flex-1 px-3 py-2 border border-blue-300 border-r-0 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="گزینه سوم">
+                        </div>
+                        <div class="flex items-center">
+                            <span class="bg-blue-100 text-blue-800 rounded-l-md px-3 py-2 border border-blue-300">۴</span>
+                            <input type="text" id="editOption4" class="flex-1 px-3 py-2 border border-blue-300 border-r-0 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="گزینه چهارم">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="editCorrectAnswer" class="block text-sm font-medium text-blue-700 mb-1">گزینه صحیح</label>
+                    <select id="editCorrectAnswer" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="1">گزینه 1</option>
+                        <option value="2">گزینه 2</option>
+                        <option value="3">گزینه 3</option>
+                        <option value="4">گزینه 4</option>
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="editDetailedAnswer" class="block text-sm font-medium text-blue-700 mb-1">پاسخنامه تشریحی</label>
+                    <textarea id="editDetailedAnswer" rows="3" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="پاسخ تشریحی سوال..."></textarea>
+                </div>
+                
+                <div class="mb-4">
+                    <div class="flex items-center mb-2">
+                        <input type="checkbox" id="editNeedImage" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-blue-300 rounded">
+                        <label for="editNeedImage" class="mr-2 block text-sm font-medium text-blue-700">سوال نیاز به شکل دارد</label>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-2 space-x-reverse mt-6">
+                    <button type="button" id="cancelEdit" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 btn-hover">
+                        انصراف
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 btn-hover">
+                        ذخیره تغییرات
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- مودال ساخت آزمون -->
+    <div id="createExamModal" class="modal">
+        <div class="modal-content p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-blue-800">ساخت آزمون جدید</h3>
+                <button id="closeExamModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="createExamForm">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="examSubject" class="block text-sm font-medium text-blue-700 mb-1">موضوع آزمون</label>
+                        <select id="examSubject" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">همه موضوعات</option>
+                            <option>ریاضی</option>
+                            <option>فیزیک</option>
+                            <option>شیمی</option>
+                            <option>ادبیات</option>
+                            <option>زبان انگلیسی</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="examChapter" class="block text-sm font-medium text-blue-700 mb-1">مبحث درسی</label>
+                        <select id="examChapter" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">همه مباحث</option>
+                            <!-- مباحث به صورت دینامیک لود می‌شوند -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="examLevel" class="block text-sm font-medium text-blue-700 mb-1">سطح دشواری</label>
+                        <select id="examLevel" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">همه سطوح</option>
+                            <option value="easy">آسان</option>
+                            <option value="medium">متوسط</option>
+                            <option value="hard">دشوار</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="examQuestionCount" class="block text-sm font-medium text-blue-700 mb-1">تعداد سوالات</label>
+                        <input type="number" id="examQuestionCount" min="1" max="50" value="10" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label for="examTitle" class="block text-sm font-medium text-blue-700 mb-1">عنوان آزمون</label>
+                    <input type="text" id="examTitle" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="عنوان آزمون...">
+                </div>
+
+                <div class="mb-4">
+                    <label for="examTime" class="block text-sm font-medium text-blue-700 mb-1">زمان آزمون (دقیقه)</label>
+                    <input type="number" id="examTime" min="5" max="180" value="45" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <div class="bg-blue-50 p-4 rounded-lg mb-4">
+                    <h4 class="font-medium text-blue-800 mb-2">پیش‌نمایش سوالات موجود</h4>
+                    <div id="availableQuestions" class="text-sm text-blue-600">
+                        در حال محاسبه...
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-2 space-x-reverse mt-6">
+                    <button type="button" id="previewExam" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 btn-hover">
+                        پیش‌نمایش آزمون
+                    </button>
+                    <button type="button" id="generateExam" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 btn-hover">
+                        تولید PDF
+                    </button>
+                </div>
+            </form>
+
+            <!-- پیش‌نمایش آزمون -->
+            <div id="examPreview" class="hidden mt-6">
+                <div class="border-t pt-4">
+                    <h4 class="text-lg font-semibold text-blue-800 mb-4">پیش‌نمایش آزمون</h4>
+                    <div id="previewContent" class="exam-preview">
+                        <!-- محتوای آزمون اینجا نمایش داده می‌شود -->
+                    </div>
+                    <div class="flex justify-end mt-4">
+                        <button type="button" id="downloadPdf" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 btn-hover">
+                            دانلود PDF
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- مودال مدیریت کاربران -->
+    <div id="userManagementModal" class="modal">
+        <div class="modal-content p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-blue-800">ویرایش کاربر</h3>
+                <button id="closeUserModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="userManagementForm">
+                <input type="hidden" id="editUserId">
+                
+                <div class="mb-4">
+                    <label for="editUserName" class="block text-sm font-medium text-blue-700 mb-1">نام کاربری</label>
+                    <input type="text" id="editUserName" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="نام کاربری">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="editUserPassword" class="block text-sm font-medium text-blue-700 mb-1">رمز عبور جدید</label>
+                    <input type="password" id="editUserPassword" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="رمز عبور جدید (اختیاری)">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="editUserRole" class="block text-sm font-medium text-blue-700 mb-1">سطح دسترسی</label>
+                    <select id="editUserRole" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="user">کاربر عادی</option>
+                        <option value="admin">مدیر</option>
+                        <option value="moderator">ناظر</option>
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="editUserStatus" class="block text-sm font-medium text-blue-700 mb-1">وضعیت حساب</label>
+                    <select id="editUserStatus" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="active">فعال</option>
+                        <option value="inactive">غیرفعال</option>
+                        <option value="banned">مسدود شده</option>
+                    </select>
+                </div>
+
+                <div class="flex justify-end space-x-2 space-x-reverse mt-6">
+                    <button type="button" id="cancelUserEdit" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 btn-hover">
+                        انصراف
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 btn-hover">
+                        ذخیره تغییرات
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- صفحه ورود -->
+    <div id="authPage" class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 fade-in">
+        <div class="max-w-md w-full space-y-8">
+            <div>
+                <div class="mx-auto h-20 w-20 rounded-full gradient-bg flex items-center justify-center text-white">
+                    <i class="fas fa-brain text-3xl"></i>
+                </div>
+                <h2 class="mt-6 text-center text-3xl font-extrabold text-blue-800">
+                    سامانه سمپا
+                </h2>
+                <p class="mt-2 text-center text-sm text-blue-600">
+                    سامانه مدیریت پرسش و پاسخ
+                </p>
+            </div>
+            
+            <form id="loginForm" class="mt-8 space-y-6">
+                <div class="rounded-md shadow-sm -space-y-px">
+                    <div>
+                        <label for="username" class="sr-only">نام کاربری</label>
+                        <input id="username" name="username" type="text" required maxlength="5" pattern="[A-Za-z]{5}" class="appearance-none rounded-none relative block w-full px-3 py-3 border border-blue-300 placeholder-blue-500 text-blue-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10" placeholder="نام کاربری (5 حرف)">
+                    </div>
+                    <div>
+                        <label for="password" class="sr-only">رمز عبور</label>
+                        <input id="password" name="password" type="password" required minlength="4" pattern="\d{4,}" class="appearance-none rounded-none relative block w-full px-3 py-3 border border-blue-300 placeholder-blue-500 text-blue-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10" placeholder="رمز عبور (حداقل 4 عدد)">
+                    </div>
+                </div>
+
+                <div>
+                    <button type="submit" class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white gradient-bg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 btn-hover pulse-blue">
+                        <span class="absolute left-0 inset-y-0 flex items-center pl-3">
+                            <i class="fas fa-sign-in-alt text-blue-300"></i>
+                        </span>
+                        ورود به سمپا
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- پنل ادمین -->
+    <div id="adminPanel" class="min-h-screen hidden">
+        <!-- نوار کناری -->
+        <div class="fixed inset-y-0 right-0 z-50 w-64 sidebar text-white">
+            <div class="flex flex-col h-full">
+                <div class="flex items-center justify-center h-20 bg-blue-900 bg-opacity-50">
+                    <div class="h-12 w-12 rounded-full bg-white flex items-center justify-center text-blue-600 mr-2">
+                        <i class="fas fa-crown text-xl"></i>
+                    </div>
+                    <h1 class="text-xl font-bold">پنل مدیریت</h1>
+                </div>
+                
+                <!-- پروفایل ادمین -->
+                <div class="p-4 border-b border-blue-700">
+                    <div class="flex items-center">
+                        <div class="h-12 w-12 rounded-full bg-blue-200 flex items-center justify-center text-blue-800">
+                            <i class="fas fa-user-shield"></i>
+                        </div>
+                        <div class="mr-3">
+                            <p class="font-medium">مدیر سیستم</p>
+                            <p class="text-xs text-blue-200">سطح دسترسی: ادمین</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- منو -->
+                <nav class="flex-1 p-4">
+                    <a href="#" class="flex items-center px-4 py-3 sidebar-item active" data-page="adminDashboard">
+                        <i class="fas fa-tachometer-alt ml-3"></i>
+                        <span>داشبورد مدیریت</span>
+                    </a>
+                    <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="adminAddQuestion">
+                        <i class="fas fa-plus-circle ml-3"></i>
+                        <span>افزودن سوال</span>
+                    </a>
+                    <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="userManagement">
+                        <i class="fas fa-users ml-3"></i>
+                        <span>مدیریت کاربران</span>
+                    </a>
+                    <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="questionManagement">
+                        <i class="fas fa-tasks ml-3"></i>
+                        <span>مدیریت سوالات</span>
+                    </a>
+                    <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="examBuilder">
+                        <i class="fas fa-file-alt ml-3"></i>
+                        <span>ساخت آزمون</span>
+                    </a>
+                    <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="systemSettings">
+                        <i class="fas fa-cog ml-3"></i>
+                        <span>تنظیمات سیستم</span>
+                    </a>
+                    <a href="#" class="flex items-center px-4 py-3 sidebar-item" id="adminLogout">
+                        <i class="fas fa-sign-out-alt ml-3"></i>
+                        <span>خروج</span>
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <!-- محتوای اصلی -->
+        <div class="pr-64 transition-all duration-300 main-content">
+            <!-- نوار بالایی -->
+            <header class="bg-white shadow">
+                <div class="flex justify-between items-center px-6 py-4">
+                    <div class="flex items-center">
+                        <button id="adminMenuToggle" class="text-blue-600 focus:outline-none md:hidden">
+                            <i class="fas fa-bars text-xl"></i>
+                        </button>
+                        <h2 class="mr-4 text-xl font-semibold text-blue-800" id="adminPageTitle">داشبورد مدیریت</h2>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="ml-4 relative">
+                            <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 cursor-pointer">
+                                <i class="fas fa-bell"></i>
+                            </div>
+                            <span class="absolute top-0 left-0 h-4 w-4 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">۵</span>
+                        </div>
+                        <div class="ml-4">
+                            <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                                <i class="fas fa-user-shield"></i>
+                            </div>
+                        </div>
+                        <span class="mr-2 text-blue-800 hidden md:inline">مدیر سیستم</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- محتوای صفحات ادمین -->
+            <main class="p-6">
+                <!-- داشبورد مدیریت -->
+                <div id="adminDashboard" class="fade-in">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div class="bg-white rounded-xl shadow p-6 card-hover">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                                    <i class="fas fa-users text-xl"></i>
+                                </div>
+                                <div class="mr-4">
+                                    <p class="text-sm text-blue-600">تعداد کاربران</p>
+                                    <h3 class="text-2xl font-bold text-blue-800">۱,۲۴۷</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow p-6 card-hover">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-green-100 text-green-600">
+                                    <i class="fas fa-question-circle text-xl"></i>
+                                </div>
+                                <div class="mr-4">
+                                    <p class="text-sm text-green-600">سوالات کل</p>
+                                    <h3 class="text-2xl font-bold text-green-800">۱۲,۵۸۹</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow p-6 card-hover">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                                    <i class="fas fa-coins text-xl"></i>
+                                </div>
+                                <div class="mr-4">
+                                    <p class="text-sm text-yellow-600">درآمد کل سیستم</p>
+                                    <h3 class="text-2xl font-bold text-yellow-800">۱۸,۵۰۰,۰۰۰ تومان</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow p-6 card-hover">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                                    <i class="fas fa-chart-line text-xl"></i>
+                                </div>
+                                <div class="mr-4">
+                                    <p class="text-sm text-purple-600">رشد ماهانه</p>
+                                    <h3 class="text-2xl font-bold text-purple-800">+۲۳٪</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white rounded-xl shadow p-6 card-hover">
+                            <h3 class="text-lg font-semibold text-blue-800 mb-4">فعالیت‌های اخیر سیستم</h3>
+                            <div class="space-y-4">
+                                <div class="flex items-center p-3 bg-blue-50 rounded-lg">
+                                    <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 ml-3">
+                                        <i class="fas fa-user-plus"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-blue-800">۳ کاربر جدید ثبت‌نام کردند</p>
+                                        <p class="text-xs text-blue-600" id="recentActivity1">در حال بارگذاری...</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center p-3 bg-green-50 rounded-lg">
+                                    <div class="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 ml-3">
+                                        <i class="fas fa-check"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-green-800">۴۷ سوال تایید شد</p>
+                                        <p class="text-xs text-green-600" id="recentActivity2">در حال بارگذاری...</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center p-3 bg-yellow-50 rounded-lg">
+                                    <div class="h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 ml-3">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-yellow-800">۱۲ سوال نیاز به بررسی دارند</p>
+                                        <p class="text-xs text-yellow-600" id="recentActivity3">در حال بارگذاری...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow p-6 card-hover">
+                            <h3 class="text-lg font-semibold text-blue-800 mb-4">آمار کاربران برتر</h3>
+                            <div class="space-y-4">
+                                <div class="flex justify-between items-center p-3 border-b border-blue-100">
+                                    <div class="flex items-center">
+                                        <div class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 ml-2">
+                                            <i class="fas fa-trophy text-xs"></i>
+                                        </div>
+                                        <span class="text-sm text-blue-800">محمد رضایی</span>
+                                    </div>
+                                    <span class="text-green-600 font-bold">۲,۴۵۰ امتیاز</span>
+                                </div>
+                                <div class="flex justify-between items-center p-3 border-b border-blue-100">
+                                    <div class="flex items-center">
+                                        <div class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 ml-2">
+                                            <i class="fas fa-trophy text-xs"></i>
+                                        </div>
+                                        <span class="text-sm text-blue-800">فاطمه احمدی</span>
+                                    </div>
+                                    <span class="text-green-600 font-bold">۲,۱۲۰ امتیاز</span>
+                                </div>
+                                <div class="flex justify-between items-center p-3 border-b border-blue-100">
+                                    <div class="flex items-center">
+                                        <div class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 ml-2">
+                                            <i class="fas fa-trophy text-xs"></i>
+                                        </div>
+                                        <span class="text-sm text-blue-800">علی کریمی</span>
+                                    </div>
+                                    <span class="text-green-600 font-bold">۱,۹۸۰ امتیاز</span>
+                                </div>
+                                <div class="flex justify-between items-center p-3">
+                                    <div class="flex items-center">
+                                        <div class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 ml-2">
+                                            <i class="fas fa-trophy text-xs"></i>
+                                        </div>
+                                        <span class="text-sm text-blue-800">زهرا محمدی</span>
+                                    </div>
+                                    <span class="text-green-600 font-bold">۱,۷۵۰ امتیاز</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- افزودن سوال در پنل ادمین -->
+                <div id="adminAddQuestion" class="hidden fade-in">
+                    <div class="bg-white rounded-xl shadow p-6 mb-6 card-hover">
+                        <h3 class="text-lg font-semibold text-blue-800 mb-4">افزودن سوال جدید (مدیریت)</h3>
+                        <form id="adminAddQuestionForm">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                                <div>
+                                    <label for="adminQuestionSubject" class="block text-sm font-medium text-blue-700 mb-1">موضوع سوال</label>
+                                    <select id="adminQuestionSubject" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option>ریاضی</option>
+                                        <option>فیزیک</option>
+                                        <option>شیمی</option>
+                                        <option>ادبیات</option>
+                                        <option>زبان انگلیسی</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="adminQuestionChapter" class="block text-sm font-medium text-blue-700 mb-1">مبحث درسی</label>
+                                    <select id="adminQuestionChapter" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option>جبر و معادله</option>
+                                        <option>هندسه</option>
+                                        <option>احتمال و آمار</option>
+                                        <option>مثلثات</option>
+                                        <option>حسابان</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                                <div>
+                                    <label for="adminQuestionLevel" class="block text-sm font-medium text-blue-700 mb-1">سطح دشواری</label>
+                                    <select id="adminQuestionLevel" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option value="easy">آسان (۱۵ امتیاز)</option>
+                                        <option value="medium">متوسط (۳۰ امتیاز)</option>
+                                        <option value="hard">دشوار (۵۰ امتیاز)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-blue-700 mb-1">امتیاز دریافتی</label>
+                                    <div class="p-2 bg-blue-50 rounded-md text-center">
+                                        <span id="adminScoreValue" class="text-lg font-bold text-blue-700">۱۵</span>
+                                        <span class="text-blue-600"> امتیاز</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-4">
+                                <label for="adminQuestionText" class="block text-sm font-medium text-blue-700 mb-1">متن سوال</label>
+                                <textarea id="adminQuestionText" rows="4" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="متن سوال خود را اینجا وارد کنید..."></textarea>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-blue-700 mb-1">گزینه‌ها</label>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div class="flex items-center">
+                                        <span class="bg-blue-100 text-blue-800 rounded-l-md px-3 py-2 border border-blue-300">۱</span>
+                                        <input type="text" id="adminOption1" class="flex-1 px-3 py-2 border border-blue-300 border-r-0 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="گزینه اول">
+                                    </div>
+                                    <div class="flex items-center">
+                                        <span class="bg-blue-100 text-blue-800 rounded-l-md px-3 py-2 border border-blue-300">۲</span>
+                                        <input type="text" id="adminOption2" class="flex-1 px-3 py-2 border border-blue-300 border-r-0 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="گزینه دوم">
+                                    </div>
+                                    <div class="flex items-center">
+                                        <span class="bg-blue-100 text-blue-800 rounded-l-md px-3 py-2 border border-blue-300">۳</span>
+                                        <input type="text" id="adminOption3" class="flex-1 px-3 py-2 border border-blue-300 border-r-0 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="گزینه سوم">
+                                    </div>
+                                    <div class="flex items-center">
+                                        <span class="bg-blue-100 text-blue-800 rounded-l-md px-3 py-2 border border-blue-300">۴</span>
+                                        <input type="text" id="adminOption4" class="flex-1 px-3 py-2 border border-blue-300 border-r-0 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="گزینه چهارم">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="adminCorrectAnswer" class="block text-sm font-medium text-blue-700 mb-1">گزینه صحیح</label>
+                                <select id="adminCorrectAnswer" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="1">گزینه 1</option>
+                                    <option value="2">گزینه 2</option>
+                                    <option value="3">گزینه 3</option>
+                                    <option value="4">گزینه 4</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="adminDetailedAnswer" class="block text-sm font-medium text-blue-700 mb-1">پاسخنامه تشریحی (اختیاری)</label>
+                                <textarea id="adminDetailedAnswer" rows="3" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="در صورت تمایل پاسخ تشریحی سوال را وارد کنید..."></textarea>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <div class="flex items-center mb-2">
+                                    <input type="checkbox" id="adminNeedImage" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-blue-300 rounded">
+                                    <label for="adminNeedImage" class="mr-2 block text-sm font-medium text-blue-700">سوال نیاز به شکل دارد (+۱۰ امتیاز)</label>
+                                </div>
+                                <div id="adminImageUploadSection" class="hidden mt-2">
+                                    <div class="file-upload">
+                                        <button type="button" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 btn-hover btn-responsive">
+                                            <i class="fas fa-upload ml-2"></i>
+                                            انتخاب فایل تصویر
+                                        </button>
+                                        <input type="file" id="adminQuestionImage" accept="image/*" class="file-upload-input">
+                                    </div>
+                                    <div id="adminImagePreview" class="mt-3 hidden">
+                                        <p class="text-sm text-blue-600 mb-2">پیش‌نمایش تصویر:</p>
+                                        <img id="adminPreview" class="max-w-xs border border-blue-300 rounded-md">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="w-full py-3 px-4 gradient-bg hover:bg-blue-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 btn-hover btn-responsive">
+                                افزودن سوال به بانک سمپا
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- مدیریت کاربران -->
+                <div id="userManagement" class="hidden fade-in">
+                    <div class="bg-white rounded-xl shadow p-6 card-hover">
+                        <div class="flex justify-between items-center mb-4 flex-col md:flex-row">
+                            <h3 class="text-lg font-semibold text-blue-800 mb-4 md:mb-0">مدیریت کاربران سیستم</h3>
+                            <div class="flex space-x-2 space-x-reverse w-full md:w-auto btn-group-responsive">
+                                <input type="text" id="userSearchInput" placeholder="جستجو در کاربران..." class="w-full md:w-auto px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <button id="userSearchButton" class="px-4 py-2 gradient-bg text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 btn-hover btn-responsive">
+                                    <i class="fas fa-search ml-2"></i>
+                                    جستجو
+                                </button>
+                                <button id="addUserButton" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 btn-hover btn-responsive">
+                                    <i class="fas fa-plus ml-2"></i>
+                                    کاربر جدید
+                                </button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-blue-200">
+                                <thead class="bg-blue-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-blue-500 uppercase tracking-wider">نام کاربری</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-blue-500 uppercase tracking-wider">ایمیل</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-blue-500 uppercase tracking-wider">تاریخ عضویت</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-blue-500 uppercase tracking-wider">وضعیت</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-blue-500 uppercase tracking-wider">سطح دسترسی</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-blue-500 uppercase tracking-wider">عملیات</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-blue-200" id="adminUsersTable">
+                                    <!-- کاربران به صورت دینامیک اضافه خواهند شد -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- مدیریت سوالات -->
+                <div id="questionManagement" class="hidden fade-in">
+                    <div class="bg-white rounded-xl shadow p-6 card-hover">
+                        <div class="flex justify-between items-center mb-4 flex-col md:flex-row">
+                            <h3 class="text-lg font-semibold text-blue-800 mb-4 md:mb-0">مدیریت سوالات سیستم</h3>
+                            <div class="flex space-x-2 space-x-reverse w-full md:w-auto btn-group-responsive">
+                                <input type="text" placeholder="جستجو در سوالات..." class="w-full md:w-auto px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <button class="px-4 py-2 gradient-bg text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 btn-hover btn-responsive">
+                                    <i class="fas fa-search ml-2"></i>
+                                    جستجو
+                                </button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-blue-200">
+                                <thead class="bg-blue-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-blue-500 uppercase tracking-wider">سوال</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-blue-500 uppercase tracking-wider">کاربر</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-blue-500 uppercase tracking-wider">موضوع</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-blue-500 uppercase tracking-wider">تاریخ ارسال</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-blue-500 uppercase tracking-wider">وضعیت</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-blue-500 uppercase tracking-wider">عملیات</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-blue-200" id="adminQuestionsTable">
+                                    <!-- سوالات به صورت دینامیک اضافه خواهند شد -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ساخت آزمون -->
+                <div id="examBuilder" class="hidden fade-in">
+                    <div class="bg-white rounded-xl shadow p-6 card-hover">
+                        <h3 class="text-lg font-semibold text-blue-800 mb-4">ساخت آزمون جدید</h3>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div>
+                                <h4 class="font-medium text-blue-700 mb-3">تنظیمات آزمون</h4>
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-blue-700 mb-1">موضوع آزمون</label>
+                                        <select id="builderSubject" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                            <option value="">همه موضوعات</option>
+                                            <option>ریاضی</option>
+                                            <option>فیزیک</option>
+                                            <option>شیمی</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-blue-700 mb-1">مبحث درسی</label>
+                                        <select id="builderChapter" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                            <option value="">همه مباحث</option>
+                                            <!-- مباحث به صورت دینامیک لود می‌شوند -->
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-blue-700 mb-1">سطح دشواری</label>
+                                        <select id="builderLevel" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                            <option value="">همه سطوح</option>
+                                            <option value="easy">آسان</option>
+                                            <option value="medium">متوسط</option>
+                                            <option value="hard">دشوار</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-blue-700 mb-1">تعداد سوالات</label>
+                                        <input type="number" id="builderQuestionCount" min="1" max="50" value="10" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    </div>
+                                    <button id="openExamModal" class="w-full py-3 px-4 gradient-bg hover:bg-blue-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 btn-hover">
+                                        ساخت آزمون
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="font-medium text-blue-700 mb-3">آمار سوالات</h4>
+                                <div class="bg-blue-50 p-4 rounded-lg">
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between">
+                                            <span class="text-blue-700">کل سوالات:</span>
+                                            <span class="font-medium" id="totalQuestionsCount">0</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-green-700">سوالات آسان:</span>
+                                            <span class="font-medium" id="easyQuestionsCount">0</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-yellow-700">سوالات متوسط:</span>
+                                            <span class="font-medium" id="mediumQuestionsCount">0</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-red-700">سوالات دشوار:</span>
+                                            <span class="font-medium" id="hardQuestionsCount">0</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-4 bg-green-50 p-4 rounded-lg">
+                                    <h5 class="font-medium text-green-800 mb-2">آزمون‌های اخیر</h5>
+                                    <div class="space-y-2 text-sm text-green-700">
+                                        <div class="flex justify-between">
+                                            <span>آزمون ریاضی - ۱۴۰۲/۰۶/۲۰</span>
+                                            <button class="text-blue-600 hover:text-blue-800">
+                                                <i class="fas fa-download"></i>
+                                            </button>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span>آزمون فیزیک - ۱۴۰۲/۰۶/۱۸</span>
+                                            <button class="text-blue-600 hover:text-blue-800">
+                                                <i class="fas fa-download"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- تنظیمات سیستم -->
+                <div id="systemSettings" class="hidden fade-in">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white rounded-xl shadow p-6 card-hover">
+                            <h3 class="text-lg font-semibold text-blue-800 mb-4">تنظیمات عمومی</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-blue-700 mb-1">نام سیستم</label>
+                                    <input type="text" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" value="سمپا">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-blue-700 mb-1">نرخ تبدیل امتیاز به تومان</label>
+                                    <input type="number" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" value="500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-blue-700 mb-1">حداقل امتیاز برای برداشت</label>
+                                    <input type="number" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" value="1000">
+                                </div>
+                                <button class="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 btn-hover btn-responsive">
+                                    ذخیره تنظیمات
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl shadow p-6 card-hover">
+                            <h3 class="text-lg font-semibold text-blue-800 mb-4">مدیریت موضوعات</h3>
+                            <div class="space-y-4" id="subjectsList">
+                                <!-- موضوعات به صورت دینامیک اضافه خواهند شد -->
+                            </div>
+                            <div class="pt-4 border-t border-blue-200">
+                                <input type="text" id="newSubjectInput" placeholder="موضوع جدید" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2">
+                                <button id="addSubjectButton" class="w-full py-2 px-4 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 btn-hover btn-responsive">
+                                    افزودن موضوع
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- پنل کاربر عادی -->
+    <div id="userPanel" class="min-h-screen hidden">
+        <!-- محتوای پنل کاربر عادی -->
+        <div class="fixed inset-y-0 right-0 z-50 w-64 sidebar text-white">
+            <div class="flex flex-col h-full">
+                <div class="flex items-center justify-center h-20 bg-blue-900 bg-opacity-50">
+                    <div class="h-12 w-12 rounded-full bg-white flex items-center justify-center text-blue-600 mr-2">
+                        <i class="fas fa-user text-xl"></i>
+                    </div>
+                    <h1 class="text-xl font-bold">پنل کاربری</h1>
+                </div>
+                
+                <!-- پروفایل کاربر -->
+                <div class="p-4 border-b border-blue-700">
+                    <div class="flex items-center">
+                        <div class="h-12 w-12 rounded-full bg-blue-200 flex items-center justify-center text-blue-800">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="mr-3">
+                            <p class="font-medium">کاربر عادی</p>
+                            <p class="text-xs text-blue-200">سطح دسترسی: کاربر</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- منو -->
+                <nav class="flex-1 p-4">
+                    <a href="#" class="flex items-center px-4 py-3 sidebar-item active" data-page="userDashboard">
+                        <i class="fas fa-tachometer-alt ml-3"></i>
+                        <span>داشبورد کاربری</span>
+                    </a>
+                    <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="addQuestion">
+                        <i class="fas fa-plus-circle ml-3"></i>
+                        <span>افزودن سوال</span>
+                    </a>
+                    <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="userQuestions">
+                        <i class="fas fa-list ml-3"></i>
+                        <span>سوالات من</span>
+                    </a>
+                    <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="userScores">
+                        <i class="fas fa-chart-line ml-3"></i>
+                        <span>امتیازات من</span>
+                    </a>
+                    <a href="#" class="flex items-center px-4 py-3 sidebar-item" id="userLogout">
+                        <i class="fas fa-sign-out-alt ml-3"></i>
+                        <span>خروج</span>
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <!-- محتوای اصلی -->
+        <div class="pr-64 transition-all duration-300 main-content">
+            <!-- نوار بالایی -->
+            <header class="bg-white shadow">
+                <div class="flex justify-between items-center px-6 py-4">
+                    <div class="flex items-center">
+                        <button id="userMenuToggle" class="text-blue-600 focus:outline-none md:hidden">
+                            <i class="fas fa-bars text-xl"></i>
+                        </button>
+                        <h2 class="mr-4 text-xl font-semibold text-blue-800" id="userPageTitle">داشبورد کاربری</h2>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="ml-4 relative">
+                            <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 cursor-pointer">
+                                <i class="fas fa-bell"></i>
+                            </div>
+                            <span class="absolute top-0 left-0 h-4 w-4 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">۳</span>
+                        </div>
+                        <div class="ml-4">
+                            <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                                <i class="fas fa-user"></i>
+                            </div>
+                        </div>
+                        <span class="mr-2 text-blue-800 hidden md:inline">کاربر عادی</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- محتوای صفحات کاربر -->
+            <main class="p-6">
+                <!-- داشبورد کاربری -->
+                <div id="userDashboard" class="fade-in">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div class="bg-white rounded-xl shadow p-6 card-hover">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                                    <i class="fas fa-question-circle text-xl"></i>
+                                </div>
+                                <div class="mr-4">
+                                    <p class="text-sm text-blue-600">سوالات ارسالی</p>
+                                    <h3 class="text-2xl font-bold text-blue-800" id="userQuestionsCount">۰</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow p-6 card-hover">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-green-100 text-green-600">
+                                    <i class="fas fa-check text-xl"></i>
+                                </div>
+                                <div class="mr-4">
+                                    <p class="text-sm text-green-600">سوالات تایید شده</p>
+                                    <h3 class="text-2xl font-bold text-green-800" id="userApprovedCount">۰</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow p-6 card-hover">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                                    <i class="fas fa-coins text-xl"></i>
+                                </div>
+                                <div class="mr-4">
+                                    <p class="text-sm text-yellow-600">امتیاز کل</p>
+                                    <h3 class="text-2xl font-bold text-yellow-800" id="userTotalScore">۰</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-xl shadow p-6 card-hover">
+                            <div class="flex items-center">
+                                <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                                    <i class="fas fa-chart-line text-xl"></i>
+                                </div>
+                                <div class="mr-4">
+                                    <p class="text-sm text-purple-600">امتیاز این ماه</p>
+                                    <h3 class="text-2xl font-bold text-purple-800" id="userMonthlyScore">۰</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white rounded-xl shadow p-6 card-hover">
+                            <h3 class="text-lg font-semibold text-blue-800 mb-4">پیشرفت ماهانه</h3>
+                            <div class="mb-4">
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-sm font-medium text-blue-700">هدف ماهانه: ۱۰۰۰ امتیاز</span>
+                                    <span class="text-sm font-medium text-blue-700" id="monthlyScoreValue">۰</span>
+                                </div>
+                                <div class="w-full bg-blue-200 rounded-full h-2.5">
+                                    <div class="bg-blue-600 h-2.5 rounded-full" id="monthlyProgress" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div class="mt-6">
+                                <h4 class="font-medium text-blue-700 mb-2">راهنمای کسب امتیاز</h4>
+                                <ul class="text-sm text-blue-600 space-y-1">
+                                    <li class="flex items-center">
+                                        <i class="fas fa-check text-green-500 ml-2"></i>
+                                        سوال آسان: ۱۵ امتیاز
+                                    </li>
+                                    <li class="flex items-center">
+                                        <i class="fas fa-check text-green-500 ml-2"></i>
+                                        سوال متوسط: ۳۰ امتیاز
+                                    </li>
+                                    <li class="flex items-center">
+                                        <i class="fas fa-check text-green-500 ml-2"></i>
+                                        سوال دشوار: ۵۰ امتیاز
+                                    </li>
+                                    <li class="flex items-center">
+                                        <i class="fas fa-check text-green-500 ml-2"></i>
+                                        سوال با تصویر: +۱۰ امتیاز
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow p-6 card-hover">
+                            <h3 class="text-lg font-semibold text-blue-800 mb-4">فعالیت‌های اخیر</h3>
+                            <div class="space-y-4">
+                                <div class="flex items-center p-3 bg-blue-50 rounded-lg">
+                                    <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 ml-3">
+                                        <i class="fas fa-question-circle"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-blue-800">سوال جدیدی اضافه کردید</p>
+                                        <p class="text-xs text-blue-600">امروز - ۱۵:۳۰</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center p-3 bg-green-50 rounded-lg">
+                                    <div class="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 ml-3">
+                                        <i class="fas fa-check"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-green-800">سوال شما تایید شد</p>
+                                        <p class="text-xs text-green-600">دیروز - ۱۱:۴۵</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center p-3 bg-yellow-50 rounded-lg">
+                                    <div class="h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 ml-3">
+                                        <i class="fas fa-coins"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm text-yellow-800">۳۰ امتیاز دریافت کردید</p>
+                                        <p class="text-xs text-yellow-600">۲ روز پیش - ۰۹:۲۰</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- افزودن سوال -->
+                <div id="addQuestion" class="hidden fade-in">
+                    <div class="bg-white rounded-xl shadow p-6 mb-6 card-hover">
+                        <h3 class="text-lg font-semibold text-blue-800 mb-4">افزودن سوال جدید</h3>
+                        <form id="addQuestionForm">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                                <div>
+                                    <label for="questionSubject" class="block text-sm font-medium text-blue-700 mb-1">موضوع سوال</label>
+                                    <select id="questionSubject" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option>ریاضی</option>
+                                        <option>فیزیک</option>
+                                        <option>شیمی</option>
+                                        <option>ادبیات</option>
+                                        <option>زبان انگلیسی</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="questionChapter" class="block text-sm font-medium text-blue-700 mb-1">مبحث درسی</label>
+                                    <select id="questionChapter" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option>جبر و معادله</option>
+                                        <option>هندسه</option>
+                                        <option>احتمال و آمار</option>
+                                        <option>مثلثات</option>
+                                        <option>حسابان</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                                <div>
+                                    <label for="questionLevel" class="block text-sm font-medium text-blue-700 mb-1">سطح دشواری</label>
+                                    <select id="questionLevel" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option value="easy">آسان (۱۵ امتیاز)</option>
+                                        <option value="medium">متوسط (۳۰ امتیاز)</option>
+                                        <option value="hard">دشوار (۵۰ امتیاز)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-blue-700 mb-1">امتیاز دریافتی</label>
+                                    <div class="p-2 bg-blue-50 rounded-md text-center">
+                                        <span id="scoreValue" class="text-lg font-bold text-blue-700">۱۵</span>
+                                        <span class="text-blue-600"> امتیاز</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-4">
+                                <label for="questionText" class="block text-sm font-medium text-blue-700 mb-1">متن سوال</label>
+                                <textarea id="questionText" rows="4" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="متن سوال خود را اینجا وارد کنید..."></textarea>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-blue-700 mb-1">گزینه‌ها</label>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div class="flex items-center">
+                                        <span class="bg-blue-100 text-blue-800 rounded-l-md px-3 py-2 border border-blue-300">۱</span>
+                                        <input type="text" id="option1" class="flex-1 px-3 py-2 border border-blue-300 border-r-0 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="گزینه اول">
+                                    </div>
+                                    <div class="flex items-center">
+                                        <span class="bg-blue-100 text-blue-800 rounded-l-md px-3 py-2 border border-blue-300">۲</span>
+                                        <input type="text" id="option2" class="flex-1 px-3 py-2 border border-blue-300 border-r-0 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="گزینه دوم">
+                                    </div>
+                                    <div class="flex items-center">
+                                        <span class="bg-blue-100 text-blue-800 rounded-l-md px-3 py-2 border border-blue-300">۳</span>
+                                        <input type="text" id="option3" class="flex-1 px-3 py-2 border border-blue-300 border-r-0 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="گزینه سوم">
+                                    </div>
+                                    <div class="flex items-center">
+                                        <span class="bg-blue-100 text-blue-800 rounded-l-md px-3 py-2 border border-blue-300">۴</span>
+                                        <input type="text" id="option4" class="flex-1 px-3 py-2 border border-blue-300 border-r-0 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="گزینه چهارم">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="correctAnswer" class="block text-sm font-medium text-blue-700 mb-1">گزینه صحیح</label>
+                                <select id="correctAnswer" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="1">گزینه 1</option>
+                                    <option value="2">گزینه 2</option>
+                                    <option value="3">گزینه 3</option>
+                                    <option value="4">گزینه 4</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="detailedAnswer" class="block text-sm font-medium text-blue-700 mb-1">پاسخنامه تشریحی (اختیاری)</label>
+                                <textarea id="detailedAnswer" rows="3" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="در صورت تمایل پاسخ تشریحی سوال را وارد کنید..."></textarea>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <div class="flex items-center mb-2">
+                                    <input type="checkbox" id="needImage" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-blue-300 rounded">
+                                    <label for="needImage" class="mr-2 block text-sm font-medium text-blue-700">سوال نیاز به شکل دارد (+۱۰ امتیاز)</label>
+                                </div>
+                                <div id="imageUploadSection" class="hidden mt-2">
+                                    <div class="file-upload">
+                                        <button type="button" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 btn-hover btn-responsive">
+                                            <i class="fas fa-upload ml-2"></i>
+                                            انتخاب فایل تصویر
+                                        </button>
+                                        <input type="file" id="questionImage" accept="image/*" class="file-upload-input">
+                                    </div>
+                                    <div id="imagePreview" class="mt-3 hidden">
+                                        <p class="text-sm text-blue-600 mb-2">پیش‌نمایش تصویر:</p>
+                                        <img id="preview" class="max-w-xs border border-blue-300 rounded-md">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="w-full py-3 px-4 gradient-bg hover:bg-blue-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 btn-hover btn-responsive">
+                                ارسال سوال برای بررسی
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- سوالات کاربر -->
+                <div id="userQuestions" class="hidden fade-in">
+                    <div class="bg-white rounded-xl shadow p-6 card-hover">
+                        <h3 class="text-lg font-semibold text-blue-800 mb-4">سوالات ارسالی من</h3>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-blue-200">
+                                <thead class="bg-blue-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-blue-500 uppercase tracking-wider">سوال</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-blue-500 uppercase tracking-wider">موضوع</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-blue-500 uppercase tracking-wider">مبحث</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-blue-500 uppercase tracking-wider">سطح</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-blue-500 uppercase tracking-wider">امتیاز</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-blue-500 uppercase tracking-wider">وضعیت</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-blue-500 uppercase tracking-wider">عملیات</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-blue-200" id="userQuestionsTable">
+                                    <!-- سوالات کاربر به صورت دینامیک اضافه خواهند شد -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- امتیازات کاربر -->
+                <div id="userScores" class="hidden fade-in">
+                    <div class="bg-white rounded-xl shadow p-6 card-hover">
+                        <h3 class="text-lg font-semibold text-blue-800 mb-4">تاریخچه امتیازات</h3>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-blue-200">
+                                <thead class="bg-blue-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-blue-500 uppercase tracking-wider">تاریخ</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-blue-500 uppercase tracking-wider">سوال</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-blue-500 uppercase tracking-wider">امتیاز</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-blue-500 uppercase tracking-wider">وضعیت</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-blue-200" id="userScoresTable">
+                                    <!-- امتیازات کاربر به صورت دینامیک اضافه خواهند شد -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
