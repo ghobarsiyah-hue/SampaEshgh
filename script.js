@@ -2,6 +2,7 @@
 const adminCredentials = [
     { username: "Salar", password: "8711" },
     { username: "Miaad", password: "9248" }
+    { username: "Hasti", password: "1304" }
 ];
 
 // داده‌های نمونه
@@ -1178,4 +1179,5 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelector('#systemSettings button').addEventListener('click', function() {
         showNotification('تنظیمات با موفقیت ذخیره شد', 'success');
     });
+
 });
