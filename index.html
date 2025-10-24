@@ -2,7 +2,6 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>سمپا - سامانه مدیریت پرسش و پاسخ</title>
@@ -11,8 +10,10 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- اضافه کردن کتابخانه‌های مورد نیاز در head -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body class="bg-blue-50">
     <!-- اعلان‌ها -->
@@ -30,25 +31,27 @@
             <form id="editQuestionForm">
                 <input type="hidden" id="editQuestionId">
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div>
                         <label for="editQuestionSubject" class="block text-sm font-medium text-blue-700 mb-1">موضوع سوال</label>
                         <select id="editQuestionSubject" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option>ریاضی</option>
-                            <option>فیزیک</option>
-                            <option>شیمی</option>
-                            <option>ادبیات</option>
-                            <option>زبان انگلیسی</option>
+                            <option value="">انتخاب موضوع</option>
                         </select>
                     </div>
                     <div>
                         <label for="editQuestionChapter" class="block text-sm font-medium text-blue-700 mb-1">مبحث درسی</label>
                         <select id="editQuestionChapter" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option>جبر و معادله</option>
-                            <option>هندسه</option>
-                            <option>احتمال و آمار</option>
-                            <option>مثلثات</option>
-                            <option>حسابان</option>
+                            <option value="">انتخاب مبحث</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="editQuestionInstitution" class="block text-sm font-medium text-blue-700 mb-1">موسسه سوال</label>
+                        <select id="editQuestionInstitution" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="ماز">ماز</option>
+                            <option value="قلم چی">قلم چی</option>
+                            <option value="گاج">گاج</option>
+                            <option value="خیلی سبز">خیلی سبز</option>
+                            <option value="سایر">سایر</option>
                         </select>
                     </div>
                 </div>
@@ -147,18 +150,12 @@
                         <label for="examSubject" class="block text-sm font-medium text-blue-700 mb-1">موضوع آزمون</label>
                         <select id="examSubject" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="">همه موضوعات</option>
-                            <option>ریاضی</option>
-                            <option>فیزیک</option>
-                            <option>شیمی</option>
-                            <option>ادبیات</option>
-                            <option>زبان انگلیسی</option>
                         </select>
                     </div>
                     <div>
                         <label for="examChapter" class="block text-sm font-medium text-blue-700 mb-1">مبحث درسی</label>
                         <select id="examChapter" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="">همه مباحث</option>
-                            <!-- مباحث به صورت دینامیک لود می‌شوند -->
                         </select>
                     </div>
                 </div>
@@ -275,6 +272,177 @@
         </div>
     </div>
 
+    <!-- مودال افزودن کاربر -->
+    <div id="addUserModal" class="modal">
+        <div class="modal-content p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-blue-800">افزودن کاربر جدید</h3>
+                <button id="closeAddUserModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="addUserForm">
+                <div class="mb-4">
+                    <label for="newUserName" class="block text-sm font-medium text-blue-700 mb-1">نام کاربری</label>
+                    <input type="text" id="newUserName" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="نام کاربری" required>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="newUserEmail" class="block text-sm font-medium text-blue-700 mb-1">ایمیل</label>
+                    <input type="email" id="newUserEmail" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="ایمیل" required>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="newUserPassword" class="block text-sm font-medium text-blue-700 mb-1">رمز عبور</label>
+                    <input type="password" id="newUserPassword" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="رمز عبور" required>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="newUserRole" class="block text-sm font-medium text-blue-700 mb-1">سطح دسترسی</label>
+                    <select id="newUserRole" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="user">کاربر عادی</option>
+                        <option value="admin">مدیر</option>
+                        <option value="moderator">ناظر</option>
+                    </select>
+                </div>
+
+                <div class="flex justify-end space-x-2 space-x-reverse mt-6">
+                    <button type="button" id="cancelAddUser" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 btn-hover">
+                        انصراف
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 btn-hover">
+                        افزودن کاربر
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- مودال افزودن موضوع -->
+    <div id="addTopicModal" class="modal">
+        <div class="modal-content p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-blue-800">افزودن موضوع جدید</h3>
+                <button id="closeAddTopicModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="addTopicForm">
+                <div class="mb-4">
+                    <label for="topicName" class="block text-sm font-medium text-blue-700 mb-1">نام موضوع</label>
+                    <input type="text" id="topicName" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="نام موضوع" required>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="topicDescription" class="block text-sm font-medium text-blue-700 mb-1">توضیحات</label>
+                    <textarea id="topicDescription" rows="3" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="توضیحات موضوع"></textarea>
+                </div>
+
+                <div class="flex justify-end space-x-2 space-x-reverse mt-6">
+                    <button type="button" id="cancelAddTopic" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 btn-hover">
+                        انصراف
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 btn-hover">
+                        افزودن موضوع
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- مودال ویرایش موضوع -->
+    <div id="editTopicModal" class="modal">
+        <div class="modal-content p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-blue-800">ویرایش موضوع</h3>
+                <button id="closeEditTopicModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="editTopicForm">
+                <input type="hidden" id="editTopicId">
+                
+                <div class="mb-4">
+                    <label for="editTopicName" class="block text-sm font-medium text-blue-700 mb-1">نام موضوع</label>
+                    <input type="text" id="editTopicName" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="نام موضوع" required>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="editTopicDescription" class="block text-sm font-medium text-blue-700 mb-1">توضیحات</label>
+                    <textarea id="editTopicDescription" rows="3" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="توضیحات موضوع"></textarea>
+                </div>
+
+                <div class="flex justify-end space-x-2 space-x-reverse mt-6">
+                    <button type="button" id="cancelEditTopic" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 btn-hover">
+                        انصراف
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 btn-hover">
+                        ذخیره تغییرات
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- مودال افزودن مبحث -->
+    <div id="addChapterModal" class="modal">
+        <div class="modal-content p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-blue-800">افزودن مبحث جدید</h3>
+                <button id="closeAddChapterModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="addChapterForm">
+                <input type="hidden" id="addChapterSubject">
+                
+                <div class="mb-4">
+                    <label for="chapterName" class="block text-sm font-medium text-blue-700 mb-1">نام مبحث</label>
+                    <input type="text" id="chapterName" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="نام مبحث" required>
+                </div>
+
+                <div class="flex justify-end space-x-2 space-x-reverse mt-6">
+                    <button type="button" id="cancelAddChapter" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 btn-hover">
+                        انصراف
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 btn-hover">
+                        افزودن مبحث
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- مودال ویرایش مبحث -->
+    <div id="editChapterModal" class="modal">
+        <div class="modal-content p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-blue-800">ویرایش مبحث</h3>
+                <button id="closeEditChapterModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="editChapterForm">
+                <input type="hidden" id="editChapterSubject">
+                <input type="hidden" id="editOldChapterName">
+                
+                <div class="mb-4">
+                    <label for="editChapterName" class="block text-sm font-medium text-blue-700 mb-1">نام مبحث</label>
+                    <input type="text" id="editChapterName" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="نام مبحث" required>
+                </div>
+
+                <div class="flex justify-end space-x-2 space-x-reverse mt-6">
+                    <button type="button" id="cancelEditChapter" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 btn-hover">
+                        انصراف
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 btn-hover">
+                        ذخیره تغییرات
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- صفحه ورود -->
     <div id="authPage" class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 fade-in">
         <div class="max-w-md w-full space-y-8">
@@ -290,60 +458,54 @@
                 </p>
             </div>
             
-<form id="loginForm" class="mt-8 space-y-6">
-    <div class="rounded-md shadow-sm -space-y-px">
-        <div>
-            <label for="username" class="sr-only">نام کاربری</label>
-            <input id="username" name="username" type="text" required maxlength="5" pattern="[A-Za-z]{5}" 
-                   class="appearance-none rounded-none relative block w-full px-4 py-4 border-2 border-blue-200 placeholder-blue-400 text-blue-800 rounded-t-md focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 focus:z-10 transition-all duration-200" 
-                   placeholder="نام کاربری (5 حرف)">
-        </div>
-        <div>
-            <label for="password" class="sr-only">رمز عبور</label>
-            <input id="password" name="password" type="password" required minlength="4" pattern="\d{4,}" 
-                   class="appearance-none rounded-none relative block w-full px-4 py-4 border-2 border-blue-200 placeholder-blue-400 text-blue-800 rounded-b-md focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 focus:z-10 transition-all duration-200" 
-                   placeholder="رمز عبور (حداقل 4 عدد)">
-        </div>
-    </div>
-
-    <!-- چک‌باکس مرا به خاطر بسپار -->
-    <div class="flex items-center justify-start pt-2">
-        <div class="relative flex items-center">
-            <input type="checkbox" id="rememberMe" class="hidden">
-            <label for="rememberMe" class="flex items-center cursor-pointer group">
-                <div class="relative">
-                    <div class="w-7 h-7 border-2 border-blue-300 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 group-hover:border-blue-500 group-hover:shadow-lg bg-gradient-to-br from-white to-blue-50 shadow-inner">
-                        <svg class="w-4 h-4 text-white opacity-0 transition-all duration-300 transform scale-50" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                        </svg>
+            <form id="loginForm" class="mt-8 space-y-6">
+                <div class="rounded-md shadow-sm -space-y-px">
+                    <div>
+                        <label for="username" class="sr-only">نام کاربری</label>
+                        <input id="username" name="username" type="text" required maxlength="5" pattern="[A-Za-z]{5}" 
+                               class="appearance-none rounded-none relative block w-full px-4 py-4 border-2 border-blue-200 placeholder-blue-400 text-blue-800 rounded-t-md focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 focus:z-10 transition-all duration-200" 
+                               placeholder="نام کاربری (5 حرف)">
                     </div>
-                    <!-- افکت پالس هنگام کلیک -->
-                    <div class="absolute inset-0 rounded-lg bg-blue-400 opacity-0 scale-150 transition-all duration-300 pointer-events-none"></div>
-                </div>
-                <span class="text-blue-700 font-bold text-base transition-all duration-200 group-hover:text-blue-800 select-none relative mr-2">
-                    مرا به خاطر بسپار
-                    <span class="absolute bottom-0 right-0 w-0 h-1 bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-300 group-hover:w-full rounded-full"></span>
-                </span>
-            </label>
-        </div>
-    </div>
-
-    <!-- دکمه ورود -->
-    <div>
-        <button type="submit" 
-                class="group relative w-full flex justify-center py-4 px-4 border border-transparent text-lg font-bold rounded-md text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 transition-all duration-300 transform hover:-translate-y-0.5 shadow-lg hover:shadow-xl">
-            <span class="absolute right-0 inset-y-0 flex items-center pr-3">
-                <i class="fas fa-sign-in-alt text-blue-200 group-hover:text-white transition-colors duration-300"></i>
-            </span>
-            ورود به سیستم
-        </button>
-    </div>
-</form>
-</div>
-</div>
+                    <div>
+                        <label for="password" class="sr-only">رمز عبور</label>
+                        <input id="password" name="password" type="password" required minlength="4" pattern="\d{4,}" 
+                               class="appearance-none rounded-none relative block w-full px-4 py-4 border-2 border-blue-200 placeholder-blue-400 text-blue-800 rounded-b-md focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 focus:z-10 transition-all duration-200" 
+                               placeholder="رمز عبور (حداقل 4 عدد)">
                     </div>
                 </div>
 
+                <!-- چک‌باکس مرا به خاطر بسپار -->
+                <div class="flex items-center justify-start pt-2">
+                    <div class="relative flex items-center">
+                        <input type="checkbox" id="rememberMe" class="hidden">
+                        <label for="rememberMe" class="flex items-center cursor-pointer group">
+                            <div class="relative">
+                                <div class="w-7 h-7 border-2 border-blue-300 rounded-lg flex items-center justify-center mr-3 transition-all duration-300 group-hover:border-blue-500 group-hover:shadow-lg bg-gradient-to-br from-white to-blue-50 shadow-inner">
+                                    <svg class="w-4 h-4 text-white opacity-0 transition-all duration-300 transform scale-50" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                    </svg>
+                                </div>
+                                <!-- افکت پالس هنگام کلیک -->
+                                <div class="absolute inset-0 rounded-lg bg-blue-400 opacity-0 scale-150 transition-all duration-300 pointer-events-none"></div>
+                            </div>
+                            <span class="text-blue-700 font-bold text-base transition-all duration-200 group-hover:text-blue-800 select-none relative mr-2">
+                                مرا به خاطر بسپار
+                                <span class="absolute bottom-0 right-0 w-0 h-1 bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-300 group-hover:w-full rounded-full"></span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- دکمه ورود -->
+                <div>
+                    <button type="submit" 
+                            class="group relative w-full flex justify-center py-4 px-4 border border-transparent text-lg font-bold rounded-md text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 transition-all duration-300 transform hover:-translate-y-0.5 shadow-lg hover:shadow-xl">
+                        <span class="absolute right-0 inset-y-0 flex items-center pr-3">
+                            <i class="fas fa-sign-in-alt text-blue-200 group-hover:text-white transition-colors duration-300"></i>
+                        </span>
+                        ورود به سیستم
+                    </button>
+                </div>
             </form>
         </div>
     </div>
@@ -569,25 +731,27 @@
                     <div class="bg-white rounded-xl shadow p-6 mb-6 card-hover">
                         <h3 class="text-lg font-semibold text-blue-800 mb-4">افزودن سوال جدید (مدیریت)</h3>
                         <form id="adminAddQuestionForm">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
                                 <div>
                                     <label for="adminQuestionSubject" class="block text-sm font-medium text-blue-700 mb-1">موضوع سوال</label>
                                     <select id="adminQuestionSubject" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                        <option>ریاضی</option>
-                                        <option>فیزیک</option>
-                                        <option>شیمی</option>
-                                        <option>ادبیات</option>
-                                        <option>زبان انگلیسی</option>
+                                        <option value="">انتخاب موضوع</option>
                                     </select>
                                 </div>
                                 <div>
                                     <label for="adminQuestionChapter" class="block text-sm font-medium text-blue-700 mb-1">مبحث درسی</label>
                                     <select id="adminQuestionChapter" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                        <option>جبر و معادله</option>
-                                        <option>هندسه</option>
-                                        <option>احتمال و آمار</option>
-                                        <option>مثلثات</option>
-                                        <option>حسابان</option>
+                                        <option value="">انتخاب مبحث</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="adminQuestionInstitution" class="block text-sm font-medium text-blue-700 mb-1">موسسه سوال</label>
+                                    <select id="adminQuestionInstitution" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option value="ماز">ماز</option>
+                                        <option value="قلم چی">قلم چی</option>
+                                        <option value="گاج">گاج</option>
+                                        <option value="خیلی سبز">خیلی سبز</option>
+                                        <option value="سایر">سایر</option>
                                     </select>
                                 </div>
                             </div>
@@ -683,17 +847,39 @@
                         <div class="flex justify-between items-center mb-4 flex-col md:flex-row">
                             <h3 class="text-lg font-semibold text-blue-800 mb-4 md:mb-0">مدیریت کاربران سیستم</h3>
                             <div class="flex space-x-2 space-x-reverse w-full md:w-auto btn-group-responsive">
-                                <input type="text" id="userSearchInput" placeholder="جستجو در کاربران..." class="w-full md:w-auto px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <button id="userSearchButton" class="px-4 py-2 gradient-bg text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 btn-hover btn-responsive">
-                                    <i class="fas fa-search ml-2"></i>
-                                    جستجو
-                                </button>
-                                <button id="addUserButton" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 btn-hover btn-responsive">
+                                <button id="addUserBtn" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 btn-hover btn-responsive">
                                     <i class="fas fa-plus ml-2"></i>
                                     کاربر جدید
                                 </button>
                             </div>
                         </div>
+
+                        <!-- فیلترهای کاربران -->
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                            <div>
+                                <label for="userStatusFilter" class="block text-sm font-medium text-blue-700 mb-1">وضعیت</label>
+                                <select id="userStatusFilter" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="all">همه وضعیت‌ها</option>
+                                    <option value="active">فعال</option>
+                                    <option value="inactive">غیرفعال</option>
+                                    <option value="banned">مسدود شده</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="userRoleFilter" class="block text-sm font-medium text-blue-700 mb-1">نقش</label>
+                                <select id="userRoleFilter" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="all">همه نقش‌ها</option>
+                                    <option value="user">کاربر عادی</option>
+                                    <option value="admin">مدیر</option>
+                                    <option value="moderator">ناظر</option>
+                                </select>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label for="userSearchFilter" class="block text-sm font-medium text-blue-700 mb-1">جستجو</label>
+                                <input type="text" id="userSearchFilter" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="جستجو بر اساس نام کاربری یا ایمیل...">
+                            </div>
+                        </div>
+
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-blue-200">
                                 <thead class="bg-blue-50">
@@ -720,13 +906,36 @@
                         <div class="flex justify-between items-center mb-4 flex-col md:flex-row">
                             <h3 class="text-lg font-semibold text-blue-800 mb-4 md:mb-0">مدیریت سوالات سیستم</h3>
                             <div class="flex space-x-2 space-x-reverse w-full md:w-auto btn-group-responsive">
-                                <input type="text" placeholder="جستجو در سوالات..." class="w-full md:w-auto px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <button class="px-4 py-2 gradient-bg text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 btn-hover btn-responsive">
-                                    <i class="fas fa-search ml-2"></i>
-                                    جستجو
-                                </button>
+                                <select id="questionDisplayMode" class="px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="compact">نمایش فشرده</option>
+                                    <option value="full">نمایش کامل</option>
+                                </select>
                             </div>
                         </div>
+
+                        <!-- فیلترهای سوالات -->
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                            <div>
+                                <label for="questionSubjectFilter" class="block text-sm font-medium text-blue-700 mb-1">موضوع</label>
+                                <select id="questionSubjectFilter" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="all">همه موضوعات</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="questionStatusFilter" class="block text-sm font-medium text-blue-700 mb-1">وضعیت</label>
+                                <select id="questionStatusFilter" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="all">همه وضعیت‌ها</option>
+                                    <option value="pending">در انتظار</option>
+                                    <option value="approved">تایید شده</option>
+                                    <option value="rejected">رد شده</option>
+                                </select>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label for="questionSearchFilter" class="block text-sm font-medium text-blue-700 mb-1">جستجو</label>
+                                <input type="text" id="questionSearchFilter" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="جستجو در سوالات...">
+                            </div>
+                        </div>
+
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-blue-200">
                                 <thead class="bg-blue-50">
@@ -759,16 +968,12 @@
                                         <label class="block text-sm font-medium text-blue-700 mb-1">موضوع آزمون</label>
                                         <select id="builderSubject" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                                             <option value="">همه موضوعات</option>
-                                            <option>ریاضی</option>
-                                            <option>فیزیک</option>
-                                            <option>شیمی</option>
                                         </select>
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-blue-700 mb-1">مبحث درسی</label>
                                         <select id="builderChapter" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                                             <option value="">همه مباحث</option>
-                                            <!-- مباحث به صورت دینامیک لود می‌شوند -->
                                         </select>
                                     </div>
                                     <div>
@@ -858,15 +1063,26 @@
                         </div>
                         
                         <div class="bg-white rounded-xl shadow p-6 card-hover">
-                            <h3 class="text-lg font-semibold text-blue-800 mb-4">مدیریت موضوعات</h3>
-                            <div class="space-y-4" id="subjectsList">
-                                <!-- موضوعات به صورت دینامیک اضافه خواهند شد -->
-                            </div>
-                            <div class="pt-4 border-t border-blue-200">
-                                <input type="text" id="newSubjectInput" placeholder="موضوع جدید" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2">
-                                <button id="addSubjectButton" class="w-full py-2 px-4 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 btn-hover btn-responsive">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-semibold text-blue-800">مدیریت موضوعات و مباحث</h3>
+                                <button id="addTopicBtn" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 btn-hover btn-responsive">
+                                    <i class="fas fa-plus ml-2"></i>
                                     افزودن موضوع
                                 </button>
+                            </div>
+                            
+                            <div class="mb-6">
+                                <h4 class="font-medium text-blue-700 mb-3">موضوعات موجود</h4>
+                                <div class="space-y-3" id="topicsList">
+                                    <!-- موضوعات به صورت دینامیک اضافه خواهند شد -->
+                                </div>
+                            </div>
+                            
+                            <div class="border-t pt-4">
+                                <h4 class="font-medium text-blue-700 mb-3">مدیریت مباحث درسی</h4>
+                                <div id="subjectsManagement">
+                                    <!-- مباحث درسی به صورت دینامیک اضافه خواهند شد -->
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1080,25 +1296,27 @@
                     <div class="bg-white rounded-xl shadow p-6 mb-6 card-hover">
                         <h3 class="text-lg font-semibold text-blue-800 mb-4">افزودن سوال جدید</h3>
                         <form id="addQuestionForm">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
                                 <div>
                                     <label for="questionSubject" class="block text-sm font-medium text-blue-700 mb-1">موضوع سوال</label>
                                     <select id="questionSubject" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                        <option>ریاضی</option>
-                                        <option>فیزیک</option>
-                                        <option>شیمی</option>
-                                        <option>ادبیات</option>
-                                        <option>زبان انگلیسی</option>
+                                        <option value="">انتخاب موضوع</option>
                                     </select>
                                 </div>
                                 <div>
                                     <label for="questionChapter" class="block text-sm font-medium text-blue-700 mb-1">مبحث درسی</label>
                                     <select id="questionChapter" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                        <option>جبر و معادله</option>
-                                        <option>هندسه</option>
-                                        <option>احتمال و آمار</option>
-                                        <option>مثلثات</option>
-                                        <option>حسابان</option>
+                                        <option value="">انتخاب مبحث</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="questionInstitution" class="block text-sm font-medium text-blue-700 mb-1">موسسه سوال</label>
+                                    <select id="questionInstitution" class="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option value="ماز">ماز</option>
+                                        <option value="قلم چی">قلم چی</option>
+                                        <option value="گاج">گاج</option>
+                                        <option value="خیلی سبز">خیلی سبز</option>
+                                        <option value="سایر">سایر</option>
                                     </select>
                                 </div>
                             </div>
