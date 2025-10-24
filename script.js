@@ -21,6 +21,11 @@ let appData = {
     userQuestions: [],
     userScores: [],
     subjects: ["ریاضی", "فیزیک", "شیمی", "ادبیات", "زبان انگلیسی"],
+    topics: [
+        { id: 1, name: "ریاضیات", description: "موضوعات مربوط به ریاضی" },
+        { id: 2, name: "علوم تجربی", description: "موضوعات مربوط به علوم تجربی" },
+        { id: 3, name: "علوم انسانی", description: "موضوعات مربوط به علوم انسانی" }
+    ],
     subjectChapters: {
         "ریاضی": ["جبر و معادله", "هندسه", "احتمال و آمار", "مثلثات", "حسابان"],
         "فیزیک": ["الکتریسیته", "مکانیک","نوسان و موج", "نیرو"],
@@ -33,16 +38,29 @@ let appData = {
         monthlyScore: 0,
         questionsCount: 0,
         approvedCount: 0
+    },
+    // فیلترهای پیش‌فرض
+    userFilters: {
+        status: 'all',
+        role: 'all',
+        search: ''
+    },
+    questionFilters: {
+        subject: 'all',
+        status: 'all',
+        search: '',
+        displayMode: 'compact' // حالت‌های نمایش: compact, full
     }
 };
 
 // داده‌های نمونه برای سوالات
-const sampleQuestions = [
+let sampleQuestions = [
     {
         id: 1,
         text: "اگر x + 2 = 5 باشد، مقدار x کدام است؟",
         subject: "ریاضی",
         chapter: "جبر و معادله",
+        institution: "قلم چی",
         level: "easy",
         options: ["2", "3", "4", "5"],
         correctAnswer: "2",
@@ -55,6 +73,7 @@ const sampleQuestions = [
         text: "مساحت دایره‌ای با شعاع 5 سانتی‌متر چقدر است؟ (π = 3.14)",
         subject: "ریاضی",
         chapter: "هندسه",
+        institution: "گاج",
         level: "medium",
         options: ["78.5", "31.4", "15.7", "62.8"],
         correctAnswer: "1",
@@ -67,6 +86,7 @@ const sampleQuestions = [
         text: "مشتق تابع f(x) = x³ + 2x² چیست؟",
         subject: "ریاضی",
         chapter: "حسابان",
+        institution: "خیلی سبز",
         level: "hard",
         options: ["3x² + 4x", "3x² + 2x", "x² + 4x", "3x² + 2"],
         correctAnswer: "1",
@@ -75,6 +95,11 @@ const sampleQuestions = [
         score: 50
     }
 ];
+
+// متغیرهای global برای آزمون فعلی
+let currentExamQuestions = [];
+let currentExamTitle = "";
+let currentExamTime = "";
 
 // نمایش اعلان
 function showNotification(message, type) {
@@ -128,15 +153,125 @@ document.getElementById('loginForm').addEventListener('submit', function(e) {
         document.getElementById('authPage').classList.add('hidden');
         document.getElementById('adminPanel').classList.remove('hidden');
         showNotification('خوش آمدید مدیر سیستم!', 'success');
+        initializeAppData();
         renderAdminData();
     } else {
         // ورود به عنوان کاربر عادی
         document.getElementById('authPage').classList.add('hidden');
         document.getElementById('userPanel').classList.remove('hidden');
         showNotification('خوش آمدید!', 'success');
+        initializeAppData();
         renderUserData();
     }
 });
+
+// مقداردهی اولیه داده‌های برنامه
+function initializeAppData() {
+    // پر کردن dropdownهای موضوع
+    populateSubjectDropdowns();
+    
+    // مقداردهی اولیه dropdownهای مبحث
+    initializeChapterDropdowns();
+    
+    // بروزرسانی آمار سوالات
+    updateQuestionsStatistics();
+    
+    // مقداردهی اولیه تنظیمات سیستم
+    initializeSystemSettings();
+}
+
+// پر کردن dropdownهای موضوع در تمام فرم‌ها
+function populateSubjectDropdowns() {
+    const subjectDropdowns = [
+        'questionSubject', 'adminQuestionSubject', 'examSubject', 
+        'builderSubject', 'editQuestionSubject'
+    ];
+    
+    subjectDropdowns.forEach(dropdownId => {
+        const dropdown = document.getElementById(dropdownId);
+        if (dropdown) {
+            // پاک کردن options فعلی (به جز اولین option)
+            while (dropdown.options.length > 1) {
+                dropdown.remove(1);
+            }
+            
+            // اضافه کردن موضوعات
+            appData.subjects.forEach(subject => {
+                const option = document.createElement('option');
+                option.value = subject;
+                option.textContent = subject;
+                dropdown.appendChild(option);
+            });
+        }
+    });
+}
+
+// مقداردهی اولیه dropdownهای مبحث
+function initializeChapterDropdowns() {
+    const subjectChapterPairs = [
+        { subjectId: 'questionSubject', chapterId: 'questionChapter' },
+        { subjectId: 'adminQuestionSubject', chapterId: 'adminQuestionChapter' },
+        { subjectId: 'examSubject', chapterId: 'examChapter' },
+        { subjectId: 'builderSubject', chapterId: 'builderChapter' },
+        { subjectId: 'editQuestionSubject', chapterId: 'editQuestionChapter' }
+    ];
+    
+    subjectChapterPairs.forEach(pair => {
+        const subjectDropdown = document.getElementById(pair.subjectId);
+        const chapterDropdown = document.getElementById(pair.chapterId);
+        
+        if (subjectDropdown && chapterDropdown) {
+            // مقداردهی اولیه بر اساس موضوع پیش‌فرض
+            updateChapterOptions(subjectDropdown.value, pair.chapterId);
+            
+            // اضافه کردن event listener برای تغییر موضوع
+            subjectDropdown.addEventListener('change', function() {
+                updateChapterOptions(this.value, pair.chapterId);
+                
+                // بروزرسانی تعداد سوالات موجود در صورت لزوم
+                if (pair.subjectId === 'examSubject') {
+                    updateAvailableQuestionsCount();
+                }
+            });
+        }
+    });
+}
+
+// مقداردهی اولیه تنظیمات سیستم
+function initializeSystemSettings() {
+    renderTopicsList();
+    renderSubjectsManagement();
+}
+
+// بروزرسانی مباحث درسی بر اساس موضوع انتخاب شده
+function updateChapterOptions(subject, chapterSelectId) {
+    const chapterSelect = document.getElementById(chapterSelectId);
+    
+    if (!chapterSelect) return;
+    
+    // پاک کردن options فعلی (به جز اولین option)
+    while (chapterSelect.options.length > 1) {
+        chapterSelect.remove(1);
+    }
+    
+    // اضافه کردن مباحث مربوط به موضوع انتخاب شده
+    if (subject && appData.subjectChapters[subject]) {
+        appData.subjectChapters[subject].forEach(chapter => {
+            const option = document.createElement('option');
+            option.value = chapter;
+            option.textContent = chapter;
+            chapterSelect.appendChild(option);
+        });
+    }
+}
+
+// بروزرسانی آمار سوالات
+function updateQuestionsStatistics() {
+    document.getElementById('totalQuestionsCount').textContent = sampleQuestions.length;
+    document.getElementById('easyQuestionsCount').textContent = sampleQuestions.filter(q => q.level === 'easy').length;
+    document.getElementById('mediumQuestionsCount').textContent = sampleQuestions.filter(q => q.level === 'medium').length;
+    document.getElementById('hardQuestionsCount').textContent = sampleQuestions.filter(q => q.level === 'hard').length;
+}
 
 // مدیریت منو در پنل ادمین
 document.querySelectorAll('#adminPanel [data-page]').forEach(item => {
@@ -238,30 +373,13 @@ document.getElementById('userLogout').addEventListener('click', function(e) {
     showNotification('با موفقیت خارج شدید', 'success');
 });
 
-// تابع کمکی برای تغییر صفحه در پنل کاربر
-function switchToPage(pageId) {
-    document.querySelectorAll('#userPanel .sidebar-item').forEach(i => {
-        i.classList.remove('active');
-    });
-    
-    document.querySelector(`#userPanel [data-page="${pageId}"]`).classList.add('active');
-    
-    document.querySelectorAll('#userPanel > div > main > div').forEach(div => {
-        div.classList.add('hidden');
-    });
-    
-    document.getElementById(pageId).classList.remove('hidden');
-    
-    document.getElementById('userPageTitle').textContent = 
-        document.querySelector(`#userPanel [data-page="${pageId}"] span`).textContent;
-}
-
 // مدیریت فرم افزودن سوال در پنل کاربر
 document.getElementById('addQuestionForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
     const level = document.getElementById('questionLevel').value;
     const hasImage = document.getElementById('needImage').checked;
+    const institution = document.getElementById('questionInstitution').value;
     
     let baseScore = 0;
     switch(level) {
@@ -279,6 +397,7 @@ document.getElementById('addQuestionForm').addEventListener('submit', function(e
         text: document.getElementById('questionText').value || "سوال نمونه",
         subject: document.getElementById('questionSubject').value,
         chapter: document.getElementById('questionChapter').value,
+        institution: institution,
         level: document.getElementById('questionLevel').options[document.getElementById('questionLevel').selectedIndex].text.split(' ')[0],
         score: baseScore,
         status: "pending",
@@ -302,6 +421,7 @@ document.getElementById('adminAddQuestionForm').addEventListener('submit', funct
     
     const level = document.getElementById('adminQuestionLevel').value;
     const hasImage = document.getElementById('adminNeedImage').checked;
+    const institution = document.getElementById('adminQuestionInstitution').value;
     
     let baseScore = 0;
     switch(level) {
@@ -319,6 +439,7 @@ document.getElementById('adminAddQuestionForm').addEventListener('submit', funct
         text: document.getElementById('adminQuestionText').value || "سوال نمونه",
         subject: document.getElementById('adminQuestionSubject').value,
         chapter: document.getElementById('adminQuestionChapter').value,
+        institution: institution,
         level: level,
         options: [
             document.getElementById('adminOption1').value,
@@ -344,6 +465,7 @@ document.getElementById('adminAddQuestionForm').addEventListener('submit', funct
     document.getElementById('adminImageUploadSection').classList.add('hidden');
     document.getElementById('adminImagePreview').classList.add('hidden');
     updateAdminScore();
+    updateQuestionsStatistics();
     renderAdminData();
 });
 
@@ -489,7 +611,30 @@ function renderUsersTable() {
     const usersTable = document.getElementById('adminUsersTable');
     usersTable.innerHTML = '';
     
-    appData.users.forEach(user => {
+    // اعمال فیلترها
+    const filteredUsers = appData.users.filter(user => {
+        const matchesStatus = appData.userFilters.status === 'all' || user.status === appData.userFilters.status;
+        const matchesRole = appData.userFilters.role === 'all' || user.role === appData.userFilters.role;
+        const matchesSearch = appData.userFilters.search === '' || 
+            user.username.includes(appData.userFilters.search) || 
+            user.email.includes(appData.userFilters.search);
+        
+        return matchesStatus && matchesRole && matchesSearch;
+    });
+    
+    if (filteredUsers.length === 0) {
+        usersTable.innerHTML = `
+            <tr>
+                <td colspan="6" class="px-6 py-4 text-center text-blue-500">
+                    <i class="fas fa-search text-4xl mb-2 block"></i>
+                    <p>هیچ کاربری با فیلترهای انتخاب شده یافت نشد</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    filteredUsers.forEach(user => {
         const statusText = user.status === 'active' ? 'فعال' : 
                          user.status === 'inactive' ? 'غیرفعال' : 'مسدود شده';
         const statusClass = user.status === 'active' ? 'bg-green-100 text-green-800' : 
@@ -545,29 +690,86 @@ function renderQuestionsTable() {
     const questionsTable = document.getElementById('adminQuestionsTable');
     questionsTable.innerHTML = '';
     
-    appData.adminQuestions.forEach(question => {
+    // اعمال فیلترها
+    const filteredQuestions = appData.adminQuestions.filter(question => {
+        const matchesSubject = appData.questionFilters.subject === 'all' || question.subject === appData.questionFilters.subject;
+        const matchesStatus = appData.questionFilters.status === 'all' || question.status === appData.questionFilters.status;
+        const matchesSearch = appData.questionFilters.search === '' || 
+            question.text.includes(appData.questionFilters.search) || 
+            question.user.includes(appData.questionFilters.search);
+        
+        return matchesSubject && matchesStatus && matchesSearch;
+    });
+    
+    if (filteredQuestions.length === 0) {
+        questionsTable.innerHTML = `
+            <tr>
+                <td colspan="6" class="px-6 py-4 text-center text-blue-500">
+                    <i class="fas fa-search text-4xl mb-2 block"></i>
+                    <p>هیچ سوالی با فیلترهای انتخاب شده یافت نشد</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    filteredQuestions.forEach(question => {
         const statusText = question.status === 'approved' ? 'تایید شده' : question.status === 'pending' ? 'در انتظار' : 'رد شده';
         const statusClass = question.status === 'approved' ? 'bg-green-100 text-green-800' : 
                           question.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
         
         const row = document.createElement('tr');
         row.className = 'hover:bg-blue-50 transition-colors';
-        row.innerHTML = `
-            <td class="px-6 py-4 text-sm text-blue-900">${question.text}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-900">${question.user}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-900">${question.subject}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-900">${question.date}</td>
-            <td class="px-6 py-4 whitespace-nowrap">
-                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${statusText}</span>
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                <button class="text-blue-600 hover:text-blue-900 ml-4 edit-question" data-id="${question.id}"><i class="fas fa-edit"></i></button>
-                <button class="text-red-600 hover:text-red-900 delete-question" data-id="${question.id}"><i class="fas fa-trash"></i></button>
-                ${question.status === 'pending' ? 
-                  `<button class="text-green-600 hover:text-green-900 approve-question" data-id="${question.id}"><i class="fas fa-check"></i></button>
-                   <button class="text-red-600 hover:text-red-900 reject-question" data-id="${question.id}"><i class="fas fa-times"></i></button>` : ''}
-            </td>
-        `;
+        
+        if (appData.questionFilters.displayMode === 'full') {
+            // حالت نمایش کامل
+            row.innerHTML = `
+                <td class="px-6 py-4 text-sm text-blue-900">
+                    <div class="font-semibold mb-2">${question.text}</div>
+                    ${question.detailedAnswer ? `<div class="text-xs text-gray-600 mt-2"><strong>پاسخ تشریحی:</strong> ${question.detailedAnswer}</div>` : ''}
+                    ${question.options ? `
+                        <div class="mt-2">
+                            <strong class="text-xs">گزینه‌ها:</strong>
+                            <div class="text-xs text-gray-600 mt-1">
+                                ${question.options.map((opt, idx) => `<div>${['الف', 'ب', 'ج', 'د'][idx]}: ${opt}</div>`).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-900">${question.user}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-900">${question.subject}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-900">${question.date}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${statusText}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button class="text-blue-600 hover:text-blue-900 ml-4 edit-question" data-id="${question.id}"><i class="fas fa-edit"></i></button>
+                    <button class="text-red-600 hover:text-red-900 delete-question" data-id="${question.id}"><i class="fas fa-trash"></i></button>
+                    ${question.status === 'pending' ? 
+                      `<button class="text-green-600 hover:text-green-900 approve-question" data-id="${question.id}"><i class="fas fa-check"></i></button>
+                       <button class="text-red-600 hover:text-red-900 reject-question" data-id="${question.id}"><i class="fas fa-times"></i></button>` : ''}
+                </td>
+            `;
+        } else {
+            // حالت نمایش فشرده (پیش‌فرض)
+            row.innerHTML = `
+                <td class="px-6 py-4 text-sm text-blue-900">${question.text}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-900">${question.user}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-900">${question.subject}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-900">${question.date}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${statusText}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button class="text-blue-600 hover:text-blue-900 ml-4 edit-question" data-id="${question.id}"><i class="fas fa-edit"></i></button>
+                    <button class="text-red-600 hover:text-red-900 delete-question" data-id="${question.id}"><i class="fas fa-trash"></i></button>
+                    ${question.status === 'pending' ? 
+                      `<button class="text-green-600 hover:text-green-900 approve-question" data-id="${question.id}"><i class="fas fa-check"></i></button>
+                       <button class="text-red-600 hover:text-red-900 reject-question" data-id="${question.id}"><i class="fas fa-times"></i></button>` : ''}
+                </td>
+            `;
+        }
+        
         questionsTable.appendChild(row);
     });
     
@@ -641,13 +843,11 @@ function renderUserData() {
     document.getElementById('userQuestionsCount').textContent = appData.currentUser.questionsCount;
     document.getElementById('userApprovedCount').textContent = appData.currentUser.approvedCount;
     document.getElementById('userTotalScore').textContent = appData.currentUser.totalScore;
-    document.getElementById('userScoreValue').textContent = appData.currentUser.totalScore;
     document.getElementById('monthlyScoreValue').textContent = appData.currentUser.monthlyScore;
     
     // محاسبه پیشرفت ماهانه
     const progressPercent = Math.min(100, (appData.currentUser.monthlyScore / 1000) * 100);
     document.getElementById('monthlyProgress').style.width = `${progressPercent}%`;
-    document.querySelector('#userPanel .p-4.border-t.border-blue-700 p.text-xs').textContent = `${Math.round(progressPercent)}٪ از هدف ماهانه`;
     
     // رندر سوالات کاربر
     const userQuestionsTable = document.getElementById('userQuestionsTable');
@@ -737,15 +937,424 @@ function renderUserData() {
     }
 }
 
+// ==================== تغییرات جدید ====================
+
+// رندر لیست موضوعات در تنظیمات سیستم
+function renderTopicsList() {
+    const topicsList = document.getElementById('topicsList');
+    topicsList.innerHTML = '';
+    
+    appData.topics.forEach(topic => {
+        const topicElement = document.createElement('div');
+        topicElement.className = 'flex justify-between items-center p-4 border-b border-gray-200';
+        topicElement.innerHTML = `
+            <div>
+                <h4 class="font-semibold text-blue-900">${topic.name}</h4>
+                <p class="text-sm text-gray-600">${topic.description}</p>
+            </div>
+            <div>
+                <button class="text-blue-600 hover:text-blue-900 ml-2 edit-topic" data-id="${topic.id}">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="text-red-600 hover:text-red-900 delete-topic" data-id="${topic.id}">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        topicsList.appendChild(topicElement);
+    });
+    
+    // اضافه کردن event listener برای دکمه‌های موضوعات
+    document.querySelectorAll('.edit-topic').forEach(button => {
+        button.addEventListener('click', function() {
+            const topicId = parseInt(this.getAttribute('data-id'));
+            openEditTopicModal(topicId);
+        });
+    });
+    
+    document.querySelectorAll('.delete-topic').forEach(button => {
+        button.addEventListener('click', function() {
+            const topicId = parseInt(this.getAttribute('data-id'));
+            deleteTopic(topicId);
+        });
+    });
+}
+
+// رندر مدیریت مباحث درسی
+function renderSubjectsManagement() {
+    const subjectsManagement = document.getElementById('subjectsManagement');
+    subjectsManagement.innerHTML = '';
+    
+    Object.keys(appData.subjectChapters).forEach(subject => {
+        const subjectElement = document.createElement('div');
+        subjectElement.className = 'mb-6 p-4 border border-gray-200 rounded-lg';
+        subjectElement.innerHTML = `
+            <div class="flex justify-between items-center mb-4">
+                <h4 class="font-semibold text-blue-900 text-lg">${subject}</h4>
+                <div>
+                    <button class="text-blue-600 hover:text-blue-900 ml-2 add-chapter" data-subject="${subject}">
+                        <i class="fas fa-plus"></i> افزودن مبحث
+                    </button>
+                    <button class="text-red-600 hover:text-red-900 delete-subject-management" data-subject="${subject}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="chapters-list">
+                ${appData.subjectChapters[subject].map(chapter => `
+                    <div class="flex justify-between items-center py-2 px-3 bg-gray-50 rounded mb-2">
+                        <span class="text-blue-700">${chapter}</span>
+                        <div>
+                            <button class="text-blue-600 hover:text-blue-900 ml-2 edit-chapter" data-subject="${subject}" data-chapter="${chapter}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="text-red-600 hover:text-red-900 delete-chapter" data-subject="${subject}" data-chapter="${chapter}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        subjectsManagement.appendChild(subjectElement);
+    });
+    
+    // اضافه کردن event listener برای دکمه‌ها
+    document.querySelectorAll('.add-chapter').forEach(button => {
+        button.addEventListener('click', function() {
+            const subject = this.getAttribute('data-subject');
+            openAddChapterModal(subject);
+        });
+    });
+    
+    document.querySelectorAll('.edit-chapter').forEach(button => {
+        button.addEventListener('click', function() {
+            const subject = this.getAttribute('data-subject');
+            const chapter = this.getAttribute('data-chapter');
+            openEditChapterModal(subject, chapter);
+        });
+    });
+    
+    document.querySelectorAll('.delete-chapter').forEach(button => {
+        button.addEventListener('click', function() {
+            const subject = this.getAttribute('data-subject');
+            const chapter = this.getAttribute('data-chapter');
+            deleteChapter(subject, chapter);
+        });
+    });
+    
+    document.querySelectorAll('.delete-subject-management').forEach(button => {
+        button.addEventListener('click', function() {
+            const subject = this.getAttribute('data-subject');
+            deleteSubject(subject);
+        });
+    });
+}
+
+// باز کردن مودال افزودن موضوع
+function openAddTopicModal() {
+    document.getElementById('addTopicModal').classList.add('open');
+}
+
+// بستن مودال افزودن موضوع
+function closeAddTopicModal() {
+    document.getElementById('addTopicModal').classList.remove('open');
+    document.getElementById('addTopicForm').reset();
+}
+
+// مدیریت فرم افزودن موضوع
+document.getElementById('addTopicForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const topicName = document.getElementById('topicName').value;
+    const topicDescription = document.getElementById('topicDescription').value;
+    
+    const newTopic = {
+        id: Date.now(),
+        name: topicName,
+        description: topicDescription
+    };
+    
+    appData.topics.push(newTopic);
+    showNotification('موضوع با موفقیت اضافه شد', 'success');
+    closeAddTopicModal();
+    renderTopicsList();
+});
+
+// باز کردن مودال ویرایش موضوع
+function openEditTopicModal(topicId) {
+    const topic = appData.topics.find(t => t.id === topicId);
+    if (topic) {
+        document.getElementById('editTopicId').value = topic.id;
+        document.getElementById('editTopicName').value = topic.name;
+        document.getElementById('editTopicDescription').value = topic.description;
+        document.getElementById('editTopicModal').classList.add('open');
+    }
+}
+
+// بستن مودال ویرایش موضوع
+function closeEditTopicModal() {
+    document.getElementById('editTopicModal').classList.remove('open');
+}
+
+// مدیریت فرم ویرایش موضوع
+document.getElementById('editTopicForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const topicId = parseInt(document.getElementById('editTopicId').value);
+    const topicName = document.getElementById('editTopicName').value;
+    const topicDescription = document.getElementById('editTopicDescription').value;
+    
+    const topic = appData.topics.find(t => t.id === topicId);
+    if (topic) {
+        topic.name = topicName;
+        topic.description = topicDescription;
+        showNotification('موضوع با موفقیت ویرایش شد', 'success');
+        closeEditTopicModal();
+        renderTopicsList();
+    }
+});
+
+// حذف موضوع
+function deleteTopic(topicId) {
+    if (confirm('آیا از حذف این موضوع اطمینان دارید؟')) {
+        appData.topics = appData.topics.filter(t => t.id !== topicId);
+        showNotification('موضوع با موفقیت حذف شد', 'success');
+        renderTopicsList();
+    }
+}
+
+// باز کردن مودال افزودن مبحث
+function openAddChapterModal(subject) {
+    document.getElementById('addChapterSubject').value = subject;
+    document.getElementById('addChapterModal').classList.add('open');
+}
+
+// بستن مودال افزودن مبحث
+function closeAddChapterModal() {
+    document.getElementById('addChapterModal').classList.remove('open');
+    document.getElementById('addChapterForm').reset();
+}
+
+// مدیریت فرم افزودن مبحث
+document.getElementById('addChapterForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const subject = document.getElementById('addChapterSubject').value;
+    const chapterName = document.getElementById('chapterName').value;
+    
+    if (!appData.subjectChapters[subject]) {
+        appData.subjectChapters[subject] = [];
+    }
+    
+    appData.subjectChapters[subject].push(chapterName);
+    showNotification('مبحث با موفقیت اضافه شد', 'success');
+    closeAddChapterModal();
+    renderSubjectsManagement();
+    initializeChapterDropdowns(); // بروزرسانی dropdownها
+});
+
+// باز کردن مودال ویرایش مبحث
+function openEditChapterModal(subject, chapter) {
+    document.getElementById('editChapterSubject').value = subject;
+    document.getElementById('editOldChapterName').value = chapter;
+    document.getElementById('editChapterName').value = chapter;
+    document.getElementById('editChapterModal').classList.add('open');
+}
+
+// بستن مودال ویرایش مبحث
+function closeEditChapterModal() {
+    document.getElementById('editChapterModal').classList.remove('open');
+}
+
+// مدیریت فرم ویرایش مبحث
+document.getElementById('editChapterForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const subject = document.getElementById('editChapterSubject').value;
+    const oldChapterName = document.getElementById('editOldChapterName').value;
+    const newChapterName = document.getElementById('editChapterName').value;
+    
+    const chapterIndex = appData.subjectChapters[subject].indexOf(oldChapterName);
+    if (chapterIndex !== -1) {
+        appData.subjectChapters[subject][chapterIndex] = newChapterName;
+        
+        // به‌روزرسانی سوالات مربوطه
+        updateQuestionsChapter(subject, oldChapterName, newChapterName);
+        
+        showNotification('مبحث با موفقیت ویرایش شد', 'success');
+        closeEditChapterModal();
+        renderSubjectsManagement();
+        initializeChapterDropdowns(); // بروزرسانی dropdownها
+    }
+});
+
+// به‌روزرسانی مبحث در سوالات
+function updateQuestionsChapter(subject, oldChapter, newChapter) {
+    sampleQuestions.forEach(q => {
+        if (q.subject === subject && q.chapter === oldChapter) {
+            q.chapter = newChapter;
+        }
+    });
+    
+    appData.userQuestions.forEach(q => {
+        if (q.subject === subject && q.chapter === oldChapter) {
+            q.chapter = newChapter;
+        }
+    });
+    
+    appData.adminQuestions.forEach(q => {
+        if (q.subject === subject && q.chapter === oldChapter) {
+            q.chapter = newChapter;
+        }
+    });
+}
+
+// حذف مبحث
+function deleteChapter(subject, chapter) {
+    if (confirm(`آیا از حذف مبحث "${chapter}" اطمینان دارید؟`)) {
+        appData.subjectChapters[subject] = appData.subjectChapters[subject].filter(c => c !== chapter);
+        showNotification('مبحث با موفقیت حذف شد', 'success');
+        renderSubjectsManagement();
+        initializeChapterDropdowns(); // بروزرسانی dropdownها
+    }
+}
+
+// مدیریت افزودن کاربر جدید
+document.getElementById('addUserForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const username = document.getElementById('newUserName').value;
+    const email = document.getElementById('newUserEmail').value;
+    const password = document.getElementById('newUserPassword').value;
+    const role = document.getElementById('newUserRole').value;
+    
+    const newUser = {
+        id: Date.now(),
+        username: username,
+        email: email,
+        password: password,
+        joinDate: new Date().toLocaleDateString('fa-IR'),
+        status: 'active',
+        role: role
+    };
+    
+    appData.users.push(newUser);
+    showNotification('کاربر جدید با موفقیت اضافه شد', 'success');
+    document.getElementById('addUserForm').reset();
+    document.getElementById('addUserModal').classList.remove('open');
+    renderAdminData();
+});
+
+// باز کردن مودال افزودن کاربر
+function openAddUserModal() {
+    document.getElementById('addUserModal').classList.add('open');
+}
+
+// بستن مودال افزودن کاربر
+function closeAddUserModal() {
+    document.getElementById('addUserModal').classList.remove('open');
+    document.getElementById('addUserForm').reset();
+}
+
+// اعمال فیلترهای کاربران
+function applyUserFilters() {
+    const status = document.getElementById('userStatusFilter').value;
+    const role = document.getElementById('userRoleFilter').value;
+    const search = document.getElementById('userSearchFilter').value;
+    
+    appData.userFilters.status = status;
+    appData.userFilters.role = role;
+    appData.userFilters.search = search;
+    
+    renderUsersTable();
+}
+
+// اعمال فیلترهای سوالات
+function applyQuestionFilters() {
+    const subject = document.getElementById('questionSubjectFilter').value;
+    const status = document.getElementById('questionStatusFilter').value;
+    const search = document.getElementById('questionSearchFilter').value;
+    const displayMode = document.getElementById('questionDisplayMode').value;
+    
+    appData.questionFilters.subject = subject;
+    appData.questionFilters.status = status;
+    appData.questionFilters.search = search;
+    appData.questionFilters.displayMode = displayMode;
+    
+    renderQuestionsTable();
+}
+
+// تغییر حالت نمایش سوالات
+function toggleQuestionDisplayMode() {
+    const displayMode = document.getElementById('questionDisplayMode').value;
+    appData.questionFilters.displayMode = displayMode;
+    renderQuestionsTable();
+}
+
+// ==================== event listenerهای جدید ====================
+
+// event listener برای دکمه‌های تنظیمات سیستم
+document.getElementById('addTopicBtn').addEventListener('click', openAddTopicModal);
+document.getElementById('closeAddTopicModal').addEventListener('click', closeAddTopicModal);
+document.getElementById('closeEditTopicModal').addEventListener('click', closeEditTopicModal);
+document.getElementById('closeAddChapterModal').addEventListener('click', closeAddChapterModal);
+document.getElementById('closeEditChapterModal').addEventListener('click', closeEditChapterModal);
+
+// event listener برای مدیریت کاربران
+document.getElementById('addUserBtn').addEventListener('click', openAddUserModal);
+document.getElementById('closeAddUserModal').addEventListener('click', closeAddUserModal);
+
+// event listener برای فیلترها
+document.getElementById('userStatusFilter').addEventListener('change', applyUserFilters);
+document.getElementById('userRoleFilter').addEventListener('change', applyUserFilters);
+document.getElementById('userSearchFilter').addEventListener('input', applyUserFilters);
+document.getElementById('questionSubjectFilter').addEventListener('change', applyQuestionFilters);
+document.getElementById('questionStatusFilter').addEventListener('change', applyQuestionFilters);
+document.getElementById('questionSearchFilter').addEventListener('input', applyQuestionFilters);
+document.getElementById('questionDisplayMode').addEventListener('change', toggleQuestionDisplayMode);
+
+// تابع کمکی برای تغییر صفحه در پنل کاربر
+function switchToPage(pageId) {
+    document.querySelectorAll('#userPanel .sidebar-item').forEach(i => {
+        i.classList.remove('active');
+    });
+    
+    document.querySelector(`#userPanel [data-page="${pageId}"]`).classList.add('active');
+    
+    document.querySelectorAll('#userPanel > div > main > div').forEach(div => {
+        div.classList.add('hidden');
+    });
+    
+    document.getElementById(pageId).classList.remove('hidden');
+    
+    document.getElementById('userPageTitle').textContent = 
+        document.querySelector(`#userPanel [data-page="${pageId}"] span`).textContent;
+}
+
 // باز کردن مودال ویرایش سوال
 function openEditQuestionModal(questionId, isUserQuestion = false) {
-    const questions = isUserQuestion ? appData.userQuestions : appData.adminQuestions;
+    const questions = isUserQuestion ? appData.userQuestions : sampleQuestions;
     const question = questions.find(q => q.id === questionId);
     
     if (question) {
         document.getElementById('editQuestionId').value = question.id;
         document.getElementById('editQuestionSubject').value = question.subject;
+        document.getElementById('editQuestionChapter').value = question.chapter;
+        document.getElementById('editQuestionInstitution').value = question.institution || 'سایر';
+        document.getElementById('editQuestionLevel').value = question.level;
         document.getElementById('editQuestionText').value = question.text;
+        document.getElementById('editOption1').value = question.options ? question.options[0] : '';
+        document.getElementById('editOption2').value = question.options ? question.options[1] : '';
+        document.getElementById('editOption3').value = question.options ? question.options[2] : '';
+        document.getElementById('editOption4').value = question.options ? question.options[3] : '';
+        document.getElementById('editCorrectAnswer').value = question.correctAnswer || '1';
+        document.getElementById('editDetailedAnswer').value = question.detailedAnswer || '';
+        document.getElementById('editNeedImage').checked = question.hasImage || false;
+        document.getElementById('editScoreValue').textContent = question.score || 15;
+        
+        // بروزرسانی مباحث بر اساس موضوع انتخاب شده
+        updateChapterOptions(question.subject, 'editQuestionChapter');
         
         document.getElementById('editQuestionModal').classList.add('open');
     }
@@ -766,19 +1375,52 @@ document.getElementById('editQuestionForm').addEventListener('submit', function(
     
     const questionId = parseInt(document.getElementById('editQuestionId').value);
     const subject = document.getElementById('editQuestionSubject').value;
+    const chapter = document.getElementById('editQuestionChapter').value;
+    const institution = document.getElementById('editQuestionInstitution').value;
     const text = document.getElementById('editQuestionText').value;
+    const level = document.getElementById('editQuestionLevel').value;
+    const options = [
+        document.getElementById('editOption1').value,
+        document.getElementById('editOption2').value,
+        document.getElementById('editOption3').value,
+        document.getElementById('editOption4').value
+    ];
+    const correctAnswer = document.getElementById('editCorrectAnswer').value;
+    const detailedAnswer = document.getElementById('editDetailedAnswer').value;
+    const hasImage = document.getElementById('editNeedImage').checked;
     
     // پیدا کردن سوال در هر دو لیست و به روز رسانی آن
     let question = appData.userQuestions.find(q => q.id === questionId);
     if (question) {
         question.subject = subject;
+        question.chapter = chapter;
+        question.institution = institution;
         question.text = text;
+        question.level = level;
+        question.options = options;
+        question.correctAnswer = correctAnswer;
+        question.detailedAnswer = detailedAnswer;
+        question.hasImage = hasImage;
     }
     
-    question = appData.adminQuestions.find(q => q.id === questionId);
+    question = sampleQuestions.find(q => q.id === questionId);
     if (question) {
         question.subject = subject;
+        question.chapter = chapter;
+        question.institution = institution;
         question.text = text;
+        question.level = level;
+        question.options = options;
+        question.correctAnswer = correctAnswer;
+        question.detailedAnswer = detailedAnswer;
+        question.hasImage = hasImage;
+    }
+    
+    // به‌روزرسانی سوال در لیست adminQuestions
+    const adminQuestion = appData.adminQuestions.find(q => q.id === questionId);
+    if (adminQuestion) {
+        adminQuestion.subject = subject;
+        adminQuestion.text = text;
     }
     
     showNotification('سوال با موفقیت ویرایش شد', 'success');
@@ -787,14 +1429,17 @@ document.getElementById('editQuestionForm').addEventListener('submit', function(
     // به روز رسانی نمایش
     renderAdminData();
     renderUserData();
+    updateQuestionsStatistics();
 });
 
 // حذف سوال
 function deleteQuestion(questionId) {
     if (confirm('آیا از حذف این سوال اطمینان دارید؟')) {
         appData.adminQuestions = appData.adminQuestions.filter(q => q.id !== questionId);
+        sampleQuestions = sampleQuestions.filter(q => q.id !== questionId);
         showNotification('سوال با موفقیت حذف شد', 'success');
         renderAdminData();
+        updateQuestionsStatistics();
     }
 }
 
@@ -825,29 +1470,6 @@ function updateQuestionStatus(questionId, status) {
     }
 }
 
-// مدیریت مودال ویرایش سوال
-function openEditQuestionModal(questionId) {
-    const question = sampleQuestions.find(q => q.id === questionId);
-    if (question) {
-        // پر کردن تمام فیلدها
-        document.getElementById('editQuestionId').value = question.id;
-        document.getElementById('editQuestionSubject').value = question.subject;
-        document.getElementById('editQuestionChapter').value = question.chapter;
-        document.getElementById('editQuestionLevel').value = question.level;
-        document.getElementById('editQuestionText').value = question.text;
-        document.getElementById('editOption1').value = question.options[0];
-        document.getElementById('editOption2').value = question.options[1];
-        document.getElementById('editOption3').value = question.options[2];
-        document.getElementById('editOption4').value = question.options[3];
-        document.getElementById('editCorrectAnswer').value = question.correctAnswer;
-        document.getElementById('editDetailedAnswer').value = question.detailedAnswer;
-        document.getElementById('editNeedImage').checked = question.hasImage;
-        document.getElementById('editScoreValue').textContent = question.score;
-
-        document.getElementById('editQuestionModal').classList.add('open');
-    }
-}
-
 // مدیریت مودال ساخت آزمون
 document.getElementById('openExamModal').addEventListener('click', function() {
     document.getElementById('createExamModal').classList.add('open');
@@ -858,31 +1480,6 @@ document.getElementById('openExamModal').addEventListener('click', function() {
 document.getElementById('closeExamModal').addEventListener('click', function() {
     document.getElementById('createExamModal').classList.remove('open');
     document.getElementById('examPreview').classList.add('hidden');
-});
-
-// بروزرسانی مباحث درسی بر اساس موضوع انتخاب شده
-function updateChapterOptions(subject, chapterSelectId) {
-    const chapterSelect = document.getElementById(chapterSelectId);
-    chapterSelect.innerHTML = '<option value="">همه مباحث</option>';
-    
-    if (subject && appData.subjectChapters[subject]) {
-        appData.subjectChapters[subject].forEach(chapter => {
-            const option = document.createElement('option');
-            option.value = chapter;
-            option.textContent = chapter;
-            chapterSelect.appendChild(option);
-        });
-    }
-}
-
-// رویداد تغییر موضوع در آزمون ساز
-document.getElementById('examSubject').addEventListener('change', function() {
-    updateChapterOptions(this.value, 'examChapter');
-    updateAvailableQuestionsCount();
-});
-
-document.getElementById('builderSubject').addEventListener('change', function() {
-    updateChapterOptions(this.value, 'builderChapter');
 });
 
 // بروزرسانی تعداد سوالات موجود
@@ -927,66 +1524,313 @@ document.getElementById('previewExam').addEventListener('click', function() {
 
 // تابع برای تصادفی کردن آرایه
 function shuffleArray(array) {
-    for (let i = array.length - 1; i > 0; i--) {
+    const newArray = [...array];
+    for (let i = newArray.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
+        [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
     }
-    return array;
+    return newArray;
 }
 
 // تولید پیش‌نمایش آزمون
-// تابع جایگزین برای پیش‌نمایش آزمون
 function generateExamPreview(questions, title, time) {
     const previewContent = document.getElementById('previewContent');
+    
+    // تابع تبدیل اعداد به فارسی
+    const toPersianNumbers = (num) => {
+        const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+        return num.toString().replace(/\d/g, (digit) => persianDigits[parseInt(digit)]);
+    };
+
+    const persianTime = toPersianNumbers(time);
+    const persianQuestionCount = toPersianNumbers(questions.length);
+    const persianDate = new Date().toLocaleDateString('fa-IR');
+
     let html = `
-        <div class="exam-header bg-blue-50 p-6 rounded-lg mb-6">
-            <h2 class="text-2xl font-bold text-blue-800 mb-2">${title}</h2>
-            <div class="flex flex-wrap gap-4 text-sm text-blue-600">
-                <div class="flex items-center">
-                    <i class="fas fa-clock ml-2"></i>
-                    <span>زمان آزمون: ${time} دقیقه</span>
+        <div class="exam-header bg-blue-50 p-6 rounded-lg mb-6" style="border-bottom: 2px dashed #2563eb;">
+            <div style="position:relative;">
+                <div style="position:absolute; left:0; top:0; font-family:'Mostaqbal', Tahoma; font-weight:bold; font-size:28px; color:#2563eb;">
+                    Sampa
                 </div>
-                <div class="flex items-center">
-                    <i class="fas fa-question-circle ml-2"></i>
-                    <span>تعداد سوالات: ${questions.length}</span>
+                <div style="text-align:center;">
+                    <h2 style="margin:0; font-size:18px; padding-top:2px;">${title}</h2>
                 </div>
-                <div class="flex items-center">
-                    <i class="fas fa-calendar ml-2"></i>
-                    <span>تاریخ: ${new Date().toLocaleDateString('fa-IR')}</span>
-                </div>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-size:12px; color:#374151;">
+                <div style="text-align:right;">زمان آزمون: ${persianTime} دقیقه</div>
+                <div style="text-align:center;">تعداد سوالات: ${persianQuestionCount}</div>
+                <div style="text-align:left;">تاریخ آزمون: ${persianDate}</div>
             </div>
         </div>
         <div class="space-y-6">
     `;
 
     questions.forEach((question, index) => {
+        // تابع اصلاح ریاضی برای نمایش صحیح فرمول‌ها
+        const fixMath = (text) => {
+            if (!text) return "";
+            return text.replace(
+                /([0-9π√xX÷\+\-\=\^\(\)]+)/g,
+                '<span dir="ltr" style="display:inline-block;">$1</span>'
+            );
+        };
+
         html += `
-            <div class="question-item bg-white p-6 rounded-lg border border-blue-200 shadow-sm">
+            <div class="question-item bg-white p-6 rounded-lg border border-blue-200 shadow-sm" style="border-bottom: 1px solid #d1d5db; margin-bottom: 16px;">
                 <div class="flex items-start mb-4">
-                    <span class="question-number bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ml-3 flex-shrink-0">${index + 1}</span>
-                    <p class="text-justify flex-1 text-blue-900 leading-7">${question.text}</p>
+                    <span class="question-number bg-blue-600 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ml-3 flex-shrink-0">${toPersianNumbers(index + 1)}</span>
+                    <div class="flex-1">
+                        <p class="text-justify text-blue-900 leading-7 mb-2" style="margin: 4px 0; font-size: 16px;">${fixMath(question.text)}</p>
+                        ${question.institution ? `<p class="text-sm text-blue-600" style="font-size: 12px; color: #6b7280; margin-top: 8px; font-style: italic; text-align: left; padding-right: 10px;"><strong>${question.institution}</strong></p>` : ''}
+                    </div>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pr-8">
         `;
 
-        question.options.forEach((option, optIndex) => {
-            const optionChar = String.fromCharCode(1570 + optIndex);
+        if (question.options && question.options.length > 0) {
+            html += `<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; font-size: 14px; margin-right: 10px;">`;
+            
+            question.options.forEach((option, optIndex) => {
+                const optionChar = ["الف", "ب", "ج", "د"][optIndex] || String.fromCharCode(1570 + optIndex);
+                html += `
+                    <div style="text-align: right; flex: ${option.length < 25 ? 'calc(25% - 8px)' : '100%'}; padding: 4px 0; display: flex; align-items: flex-start;">
+                        <div style="
+                            width: 24px;
+                            height: 24px;
+                            border: 1.5px solid #2563eb;
+                            border-radius: 50%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 12px;
+                            font-weight: bold;
+                            color: #2563eb;
+                            margin-left: 6px;
+                            flex-shrink: 0;
+                        ">${optionChar}</div>
+                        <div style="flex:1;">${fixMath(option)}</div>
+                    </div>
+                `;
+            });
+            
+            html += `</div>`;
+        } else {
             html += `
-                <div class="flex items-center bg-blue-50 p-3 rounded-lg border border-blue-100">
-                    <span class="bg-blue-100 text-blue-800 rounded-md px-3 py-1 border border-blue-200 ml-2 font-bold">${optionChar}</span>
-                    <span class="text-blue-800 flex-1">${option}</span>
+                <div class="col-span-2 text-center text-blue-500 py-4">
+                    <i class="fas fa-info-circle text-xl mb-2 block"></i>
+                    <p>این سوال گزینه‌ای ندارد</p>
                 </div>
             `;
-        });
+        }
 
-        html += `</div></div>`;
+        html += `</div>`;
     });
 
-    html += `</div>`;
+    html += `
+        </div>
+        <div style="width: 100%; text-align: center; font-size: 10px; color: #2563eb; border-top: 2px dashed #2563eb; padding-top: 5px; margin-top: 10px;">
+            Sampa.ir | @Sampa_org | instagram.com/Sampa_org
+        </div>
+    `;
+    
     previewContent.innerHTML = html;
+    
+    // ذخیره سوالات برای استفاده در PDF
+    currentExamQuestions = questions;
+    currentExamTitle = title;
+    currentExamTime = time;
 }
 
-// تولید PDF با قابلیت خواندن فارسی
+// تابع یکپارچه برای تولید PDF
+function generatePDF() {
+    if (!currentExamQuestions || currentExamQuestions.length === 0) {
+        showNotification('لطفاً ابتدا آزمون را پیش‌نمایش کنید', 'error');
+        return;
+    }
+
+    try {
+        const title = currentExamTitle || "آزمون نمونه";
+        const time = currentExamTime || "-";
+        const questions = currentExamQuestions;
+
+        const previewContent = document.getElementById("previewContent");
+        previewContent.innerHTML = "";
+
+        const mainBox = document.createElement("div");
+        Object.assign(mainBox.style, {
+            width: "210mm",
+            minHeight: "297mm",
+            margin: "0 auto",
+            backgroundColor: "white",
+            boxSizing: "border-box",
+            fontFamily: "B Nazanin, Vazirmatn, Tahoma, sans-serif",
+            direction: "rtl",
+            textAlign: "right",
+            color: "#111827",
+            padding: "10mm 20mm 20mm 20mm",
+            position: "relative",
+            lineHeight: "1.8",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+        });
+
+        // هدر
+        const headerBox = document.createElement("div");
+        Object.assign(headerBox.style, {
+            width: "100%",
+            padding: "2px 0 8px 0",
+            borderBottom: "2px dashed #2563eb",
+            marginBottom: "5px",
+            position: "relative",
+        });
+
+        // تابع تبدیل اعداد به فارسی
+        const toPersianNumbers = (num) => {
+            const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+            return num.toString().replace(/\d/g, (digit) => persianDigits[parseInt(digit)]);
+        };
+
+        const persianTime = toPersianNumbers(time);
+        const persianQuestionCount = toPersianNumbers(questions.length);
+        const persianDate = new Date().toLocaleDateString('fa-IR');
+
+        headerBox.innerHTML = `
+            <div style="position:absolute; left:0; top:0;
+                        font-family:'Mostaqbal', Tahoma, sans-serif;
+                        font-weight:bold; font-size:28px; color:#2563eb;">
+                Sampa
+            </div>
+            <div style="text-align:center;">
+                <h2 style="margin:0; font-size:18px; padding-top:2px;">${title}</h2>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; font-size:12px; color:#374151;">
+                <div style="text-align:right;"> زمان آزمون  ${persianTime} دقیقه</div>
+                <div style="text-align:center;">  تعداد سوالات ${persianQuestionCount}</div>
+                <div style="text-align:left;">  تاریخ آزمون ${persianDate}</div>
+            </div>
+        `;
+        mainBox.appendChild(headerBox);
+
+        // تابع اصلاح ریاضی
+        const fixMath = (text) => {
+            if (!text) return "";
+            return text.replace(
+                /([0-9π√xX÷\+\-\=\^\(\)]+)/g,
+                '<span dir="ltr" style="display:inline-block;">$1</span>'
+            );
+        };
+
+        // سوالات
+        const questionContainer = document.createElement("div");
+        Object.assign(questionContainer.style, { padding: "0 5mm", flex: "1" });
+
+        questions.forEach((q, i) => {
+            const qBox = document.createElement("div");
+            Object.assign(qBox.style, {
+                marginBottom: "16px",
+                padding: "10px 0",
+                borderBottom: "1px solid #d1d5db",
+            });
+
+            const qText = document.createElement("p");
+            qText.innerHTML = `<strong>${toPersianNumbers(i + 1)}</strong> ${fixMath(q.text)}`;
+            Object.assign(qText.style, { margin: "4px 0", fontSize: "16px" });
+            qBox.appendChild(qText);
+
+            if (Array.isArray(q.options)) {
+                const optionsDiv = document.createElement("div");
+                Object.assign(optionsDiv.style, {
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "8px",
+                    marginTop: "8px",
+                    fontSize: "14px",
+                    marginRight: "10px",
+                });
+
+                q.options.forEach((opt, idx) => {
+                    const optChar = ["الف", "ب", "ج", "د"][idx] || String.fromCharCode(1570 + idx);
+                    const span = document.createElement("div");
+                    span.style.textAlign = "right";
+                    span.style.flex = opt.length < 25 ? "calc(25% - 8px)" : "100%";
+                    span.style.padding = "4px 0";
+                    span.style.display = "flex";
+                    span.style.alignItems = "flex-start";
+                    span.innerHTML = `
+                        <div style="
+                            width: 24px;
+                            height: 24px;
+                            border: 1.5px solid #2563eb;
+                            border-radius: 50%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 12px;
+                            font-weight: bold;
+                            color: #2563eb;
+                            margin-left: 6px;
+                            flex-shrink: 0;
+                        ">${optChar}</div>
+                        <div style="flex:1;">${fixMath(opt)}</div>
+                    `;
+                    optionsDiv.appendChild(span);
+                });
+
+                qBox.appendChild(optionsDiv);
+            }
+
+            // منبع با فرمت صحیح
+            if (q.institution) {
+                const src = document.createElement("p");
+                Object.assign(src.style, {
+                    fontSize: "12px",
+                    color: "#6b7280",
+                    marginTop: "8px",
+                    fontStyle: "italic",
+                    textAlign: "left",
+                    paddingRight: "10px",
+                });
+                src.innerHTML = `<strong>${q.institution}</strong>`;
+                qBox.appendChild(src);
+            }
+
+            questionContainer.appendChild(qBox);
+        });
+
+        mainBox.appendChild(questionContainer);
+
+        // فوتر پایین صفحه
+        const footerBox = document.createElement("div");
+        Object.assign(footerBox.style, {
+            width: "100%",
+            textAlign: "center",
+            fontSize: "10px",
+            color: "#2563eb",
+            borderTop: "2px dashed #2563eb",
+            paddingTop: "5px",
+            marginTop: "10px",
+        });
+        footerBox.innerHTML = `Sampa.ir | @Sampa_org | instagram.com/Sampa_org`;
+        mainBox.appendChild(footerBox);
+
+        previewContent.appendChild(mainBox);
+
+        const options = {
+            margin: 0,
+            filename: `${title}.pdf`,
+            image: { type: "jpeg", quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: "mm", format: "a4", orientation: "portrait", compress: true },
+        };
+
+        html2pdf().from(mainBox).set(options).save();
+    } catch (err) {
+        console.error("❌ خطا در تولید PDF:", err);
+        alert("خطا در تولید PDF. لطفاً دوباره تلاش کنید.");
+    }
+}
+
+// به‌روزرسانی event listener برای دکمه‌های PDF
 document.getElementById('downloadPdf').addEventListener('click', function() {
     generatePDF();
 });
@@ -995,143 +1839,6 @@ document.getElementById('generateExam').addEventListener('click', function() {
     generatePDF();
 });
 
-// === تابع تولید PDF با jsPDF و autoTable ===
-function generatePDF() {
-    try {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        
-        const title = document.getElementById('examTitle').value || "آزمون نمونه";
-        const time = document.getElementById('examTime').value;
-        const questions = getSelectedQuestions();
-        
-        // عنوان اصلی
-        doc.setFontSize(16);
-        doc.setTextColor(30, 64, 175); // رنگ آبی تیره
-        doc.text(title, 105, 20, { align: 'center' });
-        
-        // اطلاعات آزمون
-        doc.setFontSize(10);
-        doc.setTextColor(107, 114, 128); // رنگ خاکستری
-        doc.text(`زمان آزمون: ${time} دقیقه`, 105, 30, { align: 'center' });
-        doc.text(`تعداد سوالات: ${questions.length}`, 105, 35, { align: 'center' });
-        doc.text(`تاریخ: ${new Date().toLocaleDateString('fa-IR')}`, 105, 40, { align: 'center' });
-        
-        let yPosition = 50;
-        
-        // اضافه کردن سوالات
-        questions.forEach((question, index) => {
-            // اگر جای کافی نیست، صفحه جدید ایجاد کن
-            if (yPosition > 270) {
-                doc.addPage();
-                yPosition = 20;
-            }
-            
-            // شماره سوال
-            doc.setFontSize(12);
-            doc.setTextColor(59, 130, 246); // رنگ آبی
-            doc.text(`سوال ${index + 1}:`, 20, yPosition);
-            yPosition += 7;
-            
-            // متن سوال
-            doc.setFontSize(10);
-            doc.setTextColor(0, 0, 0); // رنگ سیاه
-            
-            const questionLines = doc.splitTextToSize(question.text, 170);
-            doc.text(questionLines, 25, yPosition);
-            yPosition += questionLines.length * 5 + 5;
-            
-            // گزینه‌ها
-            question.options.forEach((option, optIndex) => {
-                if (yPosition > 270) {
-                    doc.addPage();
-                    yPosition = 20;
-                }
-                
-                const optionChar = String.fromCharCode(1570 + optIndex);
-                const optionText = `   ${optionChar}) ${option}`;
-                const optionLines = doc.splitTextToSize(optionText, 160);
-                
-                doc.text(optionLines, 30, yPosition);
-                yPosition += optionLines.length * 4.5 + 2;
-            });
-            
-            yPosition += 8;
-            
-            // خط جداکننده (به جز برای آخرین سوال)
-            if (index < questions.length - 1 && yPosition < 270) {
-                doc.setDrawColor(200, 200, 200);
-                doc.line(20, yPosition, 190, yPosition);
-                yPosition += 12;
-            }
-        });
-        
-        // شماره صفحات
-        const pageCount = doc.internal.getNumberOfPages();
-        for (let i = 1; i <= pageCount; i++) {
-            doc.setPage(i);
-            doc.setFontSize(8);
-            doc.setTextColor(128, 128, 128);
-            doc.text(`صفحه ${i} از ${pageCount}`, 105, 285, { align: 'center' });
-        }
-        
-        // ذخیره فایل
-        const fileName = `${title.replace(/[/\\?%*:|"<>]/g, '-')}.pdf`;
-        doc.save(fileName);
-        showNotification(`آزمون "${title}" با موفقیت دانلود شد`, 'success');
-        
-    } catch (error) {
-        console.error('خطا در تولید PDF:', error);
-        showNotification('خطا در تولید PDF. لطفاً دوباره تلاش کنید', 'error');
-    }
-}
-
-// === تابع جایگزین ساده‌تر در صورت مشکل ===
-function generatePDFSimple() {
-    try {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        
-        const title = document.getElementById('examTitle').value || "آزمون نمونه";
-        const questions = getSelectedQuestions();
-        
-        let content = `${title}\n\n`;
-        
-        questions.forEach((question, index) => {
-            content += `سوال ${index + 1}: ${question.text}\n\n`;
-            
-            question.options.forEach((option, optIndex) => {
-                const optionChar = String.fromCharCode(1570 + optIndex);
-                content += `   ${optionChar}) ${option}\n`;
-            });
-            
-            content += '\n' + '='.repeat(50) + '\n\n';
-        });
-        
-        doc.text(content, 10, 10);
-        doc.save(`${title}.pdf`);
-        showNotification('آزمون با موفقیت دانلود شد', 'success');
-        
-    } catch (error) {
-        console.error('خطا در تولید PDF:', error);
-        showNotification('خطا در تولید PDF. لطفاً از روش پیش‌نمایش استفاده کنید', 'error');
-    }
-}
-
-// === تابع کمکی برای بررسی PDF ===
-function testPDF() {
-    try {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        doc.text('تست فونت فارسی - Hello World', 10, 10);
-        doc.save('test.pdf');
-        showNotification('PDF تست با موفقیت ایجاد شد', 'success');
-        return true;
-    } catch (error) {
-        showNotification('خطا در ایجاد PDF تست', 'error');
-        return false;
-    }
-}
 // گرفتن سوالات انتخابی
 function getSelectedQuestions() {
     const subject = document.getElementById('examSubject').value;
@@ -1162,15 +1869,6 @@ function openUserManagementModal(userId) {
     }
 }
 
-// بستن مودال مدیریت کاربران
-document.getElementById('closeUserModal').addEventListener('click', function() {
-    document.getElementById('userManagementModal').classList.remove('open');
-});
-
-document.getElementById('cancelUserEdit').addEventListener('click', function() {
-    document.getElementById('userManagementModal').classList.remove('open');
-});
-
 // مدیریت فرم ویرایش کاربر
 document.getElementById('userManagementForm').addEventListener('submit', function(e) {
     e.preventDefault();
@@ -1184,23 +1882,34 @@ document.getElementById('userManagementForm').addEventListener('submit', functio
     const user = appData.users.find(u => u.id === userId);
     if (user) {
         user.username = username;
-        if (password) user.password = password;
+        if (password) {
+            user.password = password;
+        }
         user.role = role;
         user.status = status;
         
-        showNotification('اطلاعات کاربر با موفقیت به روز شد', 'success');
+        showNotification('اطلاعات کاربر با موفقیت ویرایش شد', 'success');
         document.getElementById('userManagementModal').classList.remove('open');
         renderAdminData();
     }
 });
 
-// مسدود کردن/رفع مسدودیت کاربر
+// بستن مودال مدیریت کاربر
+document.getElementById('closeUserModal').addEventListener('click', function() {
+    document.getElementById('userManagementModal').classList.remove('open');
+});
+
+document.getElementById('cancelUserEdit').addEventListener('click', function() {
+    document.getElementById('userManagementModal').classList.remove('open');
+});
+
+// مسدود کردن کاربر
 function toggleUserBan(userId) {
     const user = appData.users.find(u => u.id === userId);
     if (user) {
         user.status = user.status === 'banned' ? 'active' : 'banned';
-        const action = user.status === 'banned' ? 'مسدود' : 'رفع مسدودیت';
-        showNotification(`کاربر با موفقیت ${action} شد`, 'success');
+        const statusText = user.status === 'banned' ? 'مسدود' : 'فعال';
+        showNotification(`کاربر ${statusText} شد`, 'success');
         renderAdminData();
     }
 }
@@ -1214,238 +1923,82 @@ function deleteUser(userId) {
     }
 }
 
-// مدیریت موضوعات
-// اضافه کردن این تابع برای بروزرسانی تمام dropdownهای موضوع
-function updateAllSubjectDropdowns() {
-    const dropdownIds = [
-        'questionSubject',
-        'adminQuestionSubject', 
-        'examSubject',
-        'builderSubject',
-        'editQuestionSubject'
-    ];
-    
-    dropdownIds.forEach(dropdownId => {
-        const dropdown = document.getElementById(dropdownId);
-        if (dropdown) {
-            // ذخیره مقدار فعلی
-            const currentValue = dropdown.value;
-            
-            // پاک کردن options فعلی
-            dropdown.innerHTML = '<option value="">انتخاب موضوع</option>';
-            
-            // اضافه کردن موضوعات جدید
-            appData.subjects.forEach(subject => {
-                const option = document.createElement('option');
-                option.value = subject;
-                option.textContent = subject;
-                dropdown.appendChild(option);
-            });
-            
-            // بازگرداندن مقدار قبلی اگر هنوز وجود دارد
-            if (appData.subjects.includes(currentValue)) {
-                dropdown.value = currentValue;
-            }
-            
-            // بروزرسانی مباحث اگر dropdown مربوطه وجود دارد
-            if (dropdownId === 'questionSubject') {
-                updateChapterOptions(currentValue, 'questionChapter');
-            } else if (dropdownId === 'adminQuestionSubject') {
-                updateChapterOptions(currentValue, 'adminQuestionChapter');
-            } else if (dropdownId === 'examSubject') {
-                updateChapterOptions(currentValue, 'examChapter');
-            } else if (dropdownId === 'builderSubject') {
-                updateChapterOptions(currentValue, 'builderChapter');
-            }
-        }
-    });
-}
-
-// به روزرسانی توابع مدیریت موضوعات
-function editSubject(oldSubject) {
-    const newSubject = prompt('موضوع جدید را وارد کنید:', oldSubject);
-    if (newSubject && newSubject.trim()) {
-        const index = appData.subjects.indexOf(oldSubject);
+// ویرایش موضوع
+function editSubject(subject) {
+    const newSubject = prompt('نام جدید موضوع را وارد کنید:', subject);
+    if (newSubject && newSubject.trim() !== '') {
+        // به‌روزرسانی موضوع در لیست موضوعات
+        const index = appData.subjects.indexOf(subject);
         if (index !== -1) {
             appData.subjects[index] = newSubject.trim();
-            
-            if (appData.subjectChapters[oldSubject]) {
-                appData.subjectChapters[newSubject.trim()] = appData.subjectChapters[oldSubject];
-                delete appData.subjectChapters[oldSubject];
+        }
+        
+        // به‌روزرسانی موضوع در سوالات
+        sampleQuestions.forEach(q => {
+            if (q.subject === subject) {
+                q.subject = newSubject.trim();
             }
-            
-            // بروزرسانی تمام dropdownها
-            updateAllSubjectDropdowns();
-            
-            showNotification('موضوع با موفقیت ویرایش شد', 'success');
-            renderAdminData();
-        }
+        });
+        
+        // به‌روزرسانی موضوع در سوالات کاربر
+        appData.userQuestions.forEach(q => {
+            if (q.subject === subject) {
+                q.subject = newSubject.trim();
+            }
+        });
+        
+        // به‌روزرسانی موضوع در سوالات ادمین
+        appData.adminQuestions.forEach(q => {
+            if (q.subject === subject) {
+                q.subject = newSubject.trim();
+            }
+        });
+        
+        // به‌روزرسانی dropdownها
+        populateSubjectDropdowns();
+        
+        showNotification('موضوع با موفقیت ویرایش شد', 'success');
+        renderAdminData();
+        renderUserData();
     }
 }
 
+// حذف موضوع
 function deleteSubject(subject) {
     if (confirm(`آیا از حذف موضوع "${subject}" اطمینان دارید؟`)) {
         appData.subjects = appData.subjects.filter(s => s !== subject);
         delete appData.subjectChapters[subject];
         
-        // بروزرسانی تمام dropdownها
-        updateAllSubjectDropdowns();
+        // حذف سوالات مربوط به این موضوع
+        sampleQuestions = sampleQuestions.filter(q => q.subject !== subject);
+        appData.userQuestions = appData.userQuestions.filter(q => q.subject !== subject);
+        appData.adminQuestions = appData.adminQuestions.filter(q => q.subject !== subject);
+        
+        // به‌روزرسانی dropdownها
+        populateSubjectDropdowns();
         
         showNotification('موضوع با موفقیت حذف شد', 'success');
         renderAdminData();
+        renderUserData();
+        updateQuestionsStatistics();
     }
 }
 
-// به روزرسانی تابع افزودن موضوع جدید
-document.getElementById('addSubjectButton').addEventListener('click', function() {
-    const newSubjectInput = document.getElementById('newSubjectInput');
-    const newSubject = newSubjectInput.value.trim();
-    
-    if (newSubject) {
-        if (appData.subjects.includes(newSubject)) {
-            showNotification('این موضوع قبلاً وجود دارد', 'error');
-        } else {
-            appData.subjects.push(newSubject);
-            appData.subjectChapters[newSubject] = [];
-            
-            // بروزرسانی تمام dropdownها
-            updateAllSubjectDropdowns();
-            
-            showNotification('موضوع با موفقیت اضافه شد', 'success');
-            newSubjectInput.value = '';
-            renderAdminData();
-        }
-    }
-});
-
-function deleteSubject(subject) {
-    if (confirm(`آیا از حذف موضوع "${subject}" اطمینان دارید؟`)) {
-        appData.subjects = appData.subjects.filter(s => s !== subject);
-        delete appData.subjectChapters[subject];
-        showNotification('موضوع با موفقیت حذف شد', 'success');
-        renderAdminData();
-    }
-}
-
-// افزودن موضوع جدید
-document.getElementById('addSubjectButton').addEventListener('click', function() {
-    const newSubjectInput = document.getElementById('newSubjectInput');
-    const newSubject = newSubjectInput.value.trim();
-    
-    if (newSubject) {
-        if (appData.subjects.includes(newSubject)) {
-            showNotification('این موضوع قبلاً وجود دارد', 'error');
-        } else {
-            appData.subjects.push(newSubject);
-            appData.subjectChapters[newSubject] = [];
-            showNotification('موضوع با موفقیت اضافه شد', 'success');
-            newSubjectInput.value = '';
-            renderAdminData();
-        }
-    }
-});
-
-// مقداردهی اولیه
+// مقداردهی اولیه هنگام لود صفحه
 document.addEventListener('DOMContentLoaded', function() {
-    // بروزرسانی آمار سوالات
-    document.getElementById('totalQuestionsCount').textContent = sampleQuestions.length;
-    document.getElementById('easyQuestionsCount').textContent = sampleQuestions.filter(q => q.level === 'easy').length;
-    document.getElementById('mediumQuestionsCount').textContent = sampleQuestions.filter(q => q.level === 'medium').length;
-    document.getElementById('hardQuestionsCount').textContent = sampleQuestions.filter(q => q.level === 'hard').length;
-
     // event listener برای فیلترهای آزمون
     ['examSubject', 'examChapter', 'examLevel'].forEach(id => {
-        document.getElementById(id).addEventListener('change', updateAvailableQuestionsCount);
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('change', updateAvailableQuestionsCount);
+        }
     });
 
-    updateUserScore();
-    updateAdminScore();
-    
     // اضافه کردن event listener برای دکمه ذخیره تنظیمات
-    document.querySelector('#systemSettings button').addEventListener('click', function() {
-        showNotification('تنظیمات با موفقیت ذخیره شد', 'success');
-    });
-});
-// اضافه کردن این توابع برای مدیریت ذخیره اطلاعات لاگین
-function saveLoginCredentials(username, password) {
-    const loginData = {
-        username: username,
-        password: password,
-        timestamp: new Date().getTime()
-    };
-    localStorage.setItem('rememberedLogin', JSON.stringify(loginData));
-}
-
-function getSavedLoginCredentials() {
-    const saved = localStorage.getItem('rememberedLogin');
-    if (saved) {
-        const loginData = JSON.parse(saved);
-        // بررسی اینکه اطلاعات بیش از 30 روز قدیمی نباشند
-        const oneMonth = 30 * 24 * 60 * 60 * 1000;
-        if (new Date().getTime() - loginData.timestamp < oneMonth) {
-            return loginData;
-        } else {
-            localStorage.removeItem('rememberedLogin');
-        }
+    const saveSettingsBtn = document.querySelector('#systemSettings button');
+    if (saveSettingsBtn) {
+        saveSettingsBtn.addEventListener('click', function() {
+            showNotification('تنظیمات با موفقیت ذخیره شد', 'success');
+        });
     }
-    return null;
-}
-
-function clearSavedLoginCredentials() {
-    localStorage.removeItem('rememberedLogin');
-}
-
-// به روزرسانی فرم لاگین در HTML (اضافه کردن چک‌باکس)
-// این کد را به فرم لاگین در HTML اضافه کنید:
-/*
-<div class="flex items-center mb-4">
-    <input type="checkbox" id="rememberMe" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2">
-    <label for="rememberMe" class="mr-2 text-sm font-medium text-gray-900">مرا به خاطر بسپار</label>
-</div>
-*/
-
-// به روزرسانی مدیریت لاگین
-document.getElementById('loginForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-    const rememberMe = document.getElementById('rememberMe').checked;
-    
-    if (!validateLoginForm(username, password)) {
-        return;
-    }
-    
-    // بررسی ورود به عنوان ادمین
-    const isAdmin = adminCredentials.some(cred => 
-        cred.username === username && cred.password === password
-    );
-    
-    if (isAdmin) {
-        // ذخیره اطلاعات اگر چک‌باکس فعال باشد
-        if (rememberMe) {
-            saveLoginCredentials(username, password);
-        } else {
-            clearSavedLoginCredentials();
-        }
-        
-        document.getElementById('authPage').classList.add('hidden');
-        document.getElementById('adminPanel').classList.remove('hidden');
-        showNotification('خوش آمدید مدیر سیستم!', 'success');
-        renderAdminData();
-    } else {
-        showNotification('نام کاربری یا رمز عبور اشتباه است', 'error');
-    }
-});
-
-// بارگذاری اطلاعات ذخیره شده هنگام لود صفحه
-document.addEventListener('DOMContentLoaded', function() {
-    const savedCredentials = getSavedLoginCredentials();
-    if (savedCredentials) {
-        document.getElementById('username').value = savedCredentials.username;
-        document.getElementById('password').value = savedCredentials.password;
-        document.getElementById('rememberMe').checked = true;
-    }
-    
-    // بقیه کدهای initialization...
 });
