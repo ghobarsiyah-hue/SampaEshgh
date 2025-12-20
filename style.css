@@ -1148,3 +1148,154 @@
         grid-template-columns: repeat(1, minmax(0, 1fr));
     }
 }
+/* استایل‌های حالت فوکوس */
+.focus-mode-btn {
+    transition: all 0.3s ease;
+    border-width: 2px;
+}
+
+.focus-mode-btn:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.focus-mode-btn.active {
+    border-color: var(--primary-color);
+    background-color: rgba(59, 130, 246, 0.05);
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.15);
+}
+
+/* انیمیشن تایمر */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.animate-pulse {
+    animation: pulse 1s ease-in-out infinite;
+}
+
+/* استایل‌های پنل دستاوردها */
+.achievement-card {
+    transition: all 0.3s ease;
+}
+
+.achievement-card:hover {
+    transform: scale(1.02);
+}
+
+/* استایل‌های آیتم‌های قفل شده */
+.locked-item {
+    position: relative;
+    cursor: not-allowed;
+}
+
+.locked-item::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.4) 100%);
+    border-radius: 12px;
+    backdrop-filter: blur(2px);
+}
+
+/* استایل‌های حالت‌های مختلف تایمر */
+.timer-focus {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+}
+
+.timer-break {
+    background: linear-gradient(135deg, var(--success-color) 0%, #059669 100%);
+}
+
+.timer-challenge {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+}
+
+/* انیمیشن دستاورد جدید */
+@keyframes achievementUnlock {
+    0% {
+        transform: scale(0.5) rotate(-10deg);
+        opacity: 0;
+    }
+    70% {
+        transform: scale(1.1) rotate(5deg);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1) rotate(0deg);
+    }
+}
+
+.achievement-unlock {
+    animation: achievementUnlock 0.6s ease-out;
+}
+
+/* استایل‌های پیشرفته برای تایمر */
+.timer-circle {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    margin: 0 auto;
+}
+
+.timer-progress {
+    transform: rotate(-90deg);
+}
+
+.timer-progress circle {
+    transition: stroke-dashoffset 1s linear;
+}
+
+/* استایل‌های حالت شب‌برای فوکوس */
+.focus-mode-dark {
+    background-color: #1a202c;
+    color: #e2e8f0;
+}
+
+.focus-mode-dark .card-hover {
+    background-color: #2d3748;
+    border-color: #4a5568;
+}
+
+.focus-mode-dark .form-control,
+.focus-mode-dark .form-select {
+    background-color: #4a5568;
+    border-color: #718096;
+    color: #e2e8f0;
+}
+
+/* استایل‌های ریسپانسیو برای فوکوس */
+@media (max-width: 768px) {
+    .timer-circle {
+        width: 150px;
+        height: 150px;
+    }
+    
+    #timerDisplay {
+        font-size: 3rem;
+    }
+    
+    .focus-mode-btn {
+        padding: 1rem;
+    }
+    
+    .focus-mode-btn i {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .timer-circle {
+        width: 120px;
+        height: 120px;
+    }
+    
+    #timerDisplay {
+        font-size: 2.5rem;
+    }
+}
