@@ -510,65 +510,71 @@
         </div>
     </div>
 
-    <!-- پنل ادمین -->
-    <div id="adminPanel" class="min-h-screen hidden">
-        <!-- نوار کناری -->
-        <div class="fixed inset-y-0 right-0 z-50 w-64 sidebar text-white">
-            <div class="flex flex-col h-full">
-                <div class="flex items-center justify-center h-20 bg-blue-900 bg-opacity-50">
-                    <div class="h-12 w-12 rounded-full bg-white flex items-center justify-center text-blue-600 mr-2">
+   <!-- پنل ادمین -->
+<div id="adminPanel" class="min-h-screen hidden">
+    <!-- نوار کناری -->
+    <div class="fixed inset-y-0 right-0 z-50 w-64 sidebar text-white">
+        <div class="flex flex-col h-full">
+            <!-- هدر با ترازبندی بهتر -->
+            <div class="flex items-center h-20 bg-blue-900 bg-opacity-50 px-4">
+                <div class="flex items-center w-full">
+                    <!-- آیکون -->
+                    <div class="h-12 w-12 rounded-full bg-white flex items-center justify-center text-blue-600 ml-3 flex-shrink-0">
                         <i class="fas fa-crown text-xl"></i>
                     </div>
-                    <h1 class="text-xl font-bold">پنل مدیریت</h1>
-                </div>
-                
-                <!-- پروفایل ادمین -->
-                <div class="p-4 border-b border-blue-700">
-                    <div class="flex items-center">
-                        <div class="h-12 w-12 rounded-full bg-blue-200 flex items-center justify-center text-blue-800">
-                            <i class="fas fa-user-shield"></i>
-                        </div>
-                        <div class="mr-3">
-                            <p class="font-medium">مدیر سیستم</p>
-                            <p class="text-xs text-blue-200">سطح دسترسی: ادمین</p>
-                        </div>
+                    <!-- متن پنل مدیریت -->
+                    <div class="flex-1 min-w-0">
+                        <h1 class="text-xl font-bold text-right truncate">پنل مدیریت</h1>
                     </div>
                 </div>
-                
-                <!-- منو -->
-                <nav class="flex-1 p-4">
-                    <a href="#" class="flex items-center px-4 py-3 sidebar-item active" data-page="adminDashboard">
-                        <i class="fas fa-tachometer-alt ml-3"></i>
-                        <span>داشبورد مدیریت</span>
-                    </a>
-                    <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="adminAddQuestion">
-                        <i class="fas fa-plus-circle ml-3"></i>
-                        <span>افزودن سوال</span>
-                    </a>
-                    <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="userManagement">
-                        <i class="fas fa-users ml-3"></i>
-                        <span>مدیریت کاربران</span>
-                    </a>
-                    <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="questionManagement">
-                        <i class="fas fa-tasks ml-3"></i>
-                        <span>مدیریت سوالات</span>
-                    </a>
-                    <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="examBuilder">
-                        <i class="fas fa-file-alt ml-3"></i>
-                        <span>ساخت آزمون</span>
-                    </a>
-                    <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="systemSettings">
-                        <i class="fas fa-cog ml-3"></i>
-                        <span>تنظیمات سیستم</span>
-                    </a>
-                    <a href="#" class="flex items-center px-4 py-3 sidebar-item" id="adminLogout">
-                        <i class="fas fa-sign-out-alt ml-3"></i>
-                        <span>خروج</span>
-                    </a>
-                </nav>
             </div>
+            
+            <!-- پروفایل ادمین -->
+            <div class="p-4 border-b border-blue-700">
+                <div class="flex items-center">
+                    <div class="h-12 w-12 rounded-full bg-blue-200 flex items-center justify-center text-blue-800 flex-shrink-0 ml-3">
+                        <i class="fas fa-user-shield"></i>
+                    </div>
+                    <div class="flex-1 min-w-0 mr-3">
+                        <p class="font-medium text-right truncate">مدیر سیستم</p>
+                        <p class="text-xs text-blue-200 text-right truncate">سطح دسترسی: ادمین</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- منو -->
+            <nav class="flex-1 p-4">
+                <a href="#" class="flex items-center px-4 py-3 sidebar-item active" data-page="adminDashboard">
+                    <i class="fas fa-tachometer-alt ml-3 flex-shrink-0"></i>
+                    <span class="flex-1 text-right truncate">داشبورد مدیریت</span>
+                </a>
+                <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="adminAddQuestion">
+                    <i class="fas fa-plus-circle ml-3 flex-shrink-0"></i>
+                    <span class="flex-1 text-right truncate">افزودن سوال</span>
+                </a>
+                <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="userManagement">
+                    <i class="fas fa-users ml-3 flex-shrink-0"></i>
+                    <span class="flex-1 text-right truncate">مدیریت کاربران</span>
+                </a>
+                <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="questionManagement">
+                    <i class="fas fa-tasks ml-3 flex-shrink-0"></i>
+                    <span class="flex-1 text-right truncate">مدیریت سوالات</span>
+                </a>
+                <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="examBuilder">
+                    <i class="fas fa-file-alt ml-3 flex-shrink-0"></i>
+                    <span class="flex-1 text-right truncate">ساخت آزمون</span>
+                </a>
+                <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="systemSettings">
+                    <i class="fas fa-cog ml-3 flex-shrink-0"></i>
+                    <span class="flex-1 text-right truncate">تنظیمات سیستم</span>
+                </a>
+                <a href="#" class="flex items-center px-4 py-3 sidebar-item" id="adminLogout">
+                    <i class="fas fa-sign-out-alt ml-3 flex-shrink-0"></i>
+                    <span class="flex-1 text-right truncate">خروج</span>
+                </a>
+            </nav>
         </div>
-
+    </div>
         <!-- محتوای اصلی -->
         <div class="pr-64 transition-all duration-300 main-content">
             <!-- نوار بالایی -->
@@ -1134,6 +1140,10 @@
                         <i class="fas fa-chart-line ml-3"></i>
                         <span>امتیازات من</span>
                     </a>
+                    <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="focusMode">
+                        <i class="fas fa-hourglass-half ml-3 flex-shrink-0"></i>
+                        <span>حالت فوکوس</span>
+                    </a>
                     <a href="#" class="flex items-center px-4 py-3 sidebar-item" id="userLogout">
                         <i class="fas fa-sign-out-alt ml-3"></i>
                         <span>خروج</span>
@@ -1452,6 +1462,310 @@
                         </div>
                     </div>
                 </div>
+            <!-- حالت فوکوس -->
+<div id="focusMode" class="hidden fade-in">
+    <div class="bg-white rounded-xl shadow p-6 card-hover">
+        <h3 class="text-lg font-semibold text-blue-800 mb-6">🎮 حالت فوکوس بازی‌گونه</h3>
+        
+        <!-- انتخاب حالت -->
+        <div class="flex flex-col md:flex-row gap-4 mb-8">
+            <button id="focusNormal" class="flex-1 p-6 rounded-xl border-2 border-blue-300 hover:border-blue-500 transition-all focus-mode-btn active">
+                <i class="fas fa-brain text-3xl text-blue-500 mb-3"></i>
+                <h4 class="text-lg font-bold text-blue-800">🌱 حالت عادی</h4>
+                <p class="text-sm text-blue-600 mt-2">تمرکز بدون محدودیت زمانی</p>
+            </button>
+            <button id="focusPomodoro" class="flex-1 p-6 rounded-xl border-2 border-green-300 hover:border-green-500 transition-all focus-mode-btn">
+                <i class="fas fa-clock text-3xl text-green-500 mb-3"></i>
+                <h4 class="text-lg font-bold text-green-800">🍅 پومودورو</h4>
+                <p class="text-sm text-green-600 mt-2">۲۵ دقیقه کار، ۵ دقیقه استراحت</p>
+            </button>
+            <button id="focusChallenge" class="flex-1 p-6 rounded-xl border-2 border-purple-300 hover:border-purple-500 transition-all focus-mode-btn">
+                <i class="fas fa-gamepad text-3xl text-purple-500 mb-3"></i>
+                <h4 class="text-lg font-bold text-purple-800">⚔️ چالش ویژه</h4>
+                <p class="text-sm text-purple-600 mt-2">امتیاز بگیر، جایزه ببر!</p>
+            </button>
+        </div>
+
+        <!-- تایمر و بازی -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- تایمر و کنترل‌ها -->
+            <div class="p-8 rounded-2xl gradient-bg text-white">
+                <div class="text-center mb-8">
+                    <h4 class="text-2xl font-bold mb-4" id="focusModeTitle">🌱 حالت عادی</h4>
+                    <div class="text-6xl font-mono font-bold mb-6" id="timerDisplay">25:00</div>
+                    
+                    <!-- کنترل‌های بازی -->
+                    <div class="flex justify-center gap-2 mb-4">
+                        <button id="treeSceneBtn" class="px-4 py-2 bg-green-600 text-white rounded-full hover:bg-green-700 transition-all text-sm">
+                            🌳 درخت
+                        </button>
+                        <button id="houseSceneBtn" class="px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-all text-sm">
+                            🏠 خانه
+                        </button>
+                        <button id="gardenSceneBtn" class="px-4 py-2 bg-pink-600 text-white rounded-full hover:bg-pink-700 transition-all text-sm">
+                            🌺 باغ
+                        </button>
+                    </div>
+                    
+                    <!-- دکمه‌های تایمر -->
+                    <div class="timer-actions flex justify-center gap-4 mb-6 flex-wrap">
+                        <button id="startTimer" class="px-8 py-3 bg-white text-blue-600 rounded-full hover:bg-blue-50 transition-all font-bold shadow-lg hover:shadow-xl">
+                            <i class="fas fa-play ml-2"></i> شروع
+                        </button>
+                        <button id="pauseTimer" class="px-8 py-3 bg-white text-blue-600 rounded-full hover:bg-blue-50 transition-all font-bold shadow-lg hover:shadow-xl" disabled>
+                            <i class="fas fa-pause ml-2"></i> مکث
+                        </button>
+                        <button id="continueTimer" class="px-8 py-3 bg-green-500 text-white rounded-full hover:bg-green-600 transition-all font-bold shadow-lg hover:shadow-xl" style="display: none;">
+                            <i class="fas fa-play-circle ml-2"></i> ادامه
+                        </button>
+                        <button id="resetTimer" class="px-8 py-3 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-all font-bold shadow-lg hover:shadow-xl">
+                            <i class="fas fa-redo ml-2"></i> ریست
+                        </button>
+                    </div>
+                    
+                    <!-- تنظیمات زمان -->
+                    <div class="bg-white bg-opacity-20 rounded-xl p-4 backdrop-blur-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <label class="text-white font-medium">⏱️ زمان تمرکز (دقیقه)</label>
+                            <input type="number" id="focusTime" min="5" max="120" value="25" 
+                                   class="w-20 px-3 py-1 rounded text-blue-800 text-center border-2 border-blue-300 focus:border-blue-500 focus:outline-none">
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <label class="text-white font-medium">☕ زمان استراحت (دقیقه)</label>
+                            <input type="number" id="breakTime" min="1" max="30" value="5" 
+                                   class="w-20 px-3 py-1 rounded text-blue-800 text-center border-2 border-blue-300 focus:border-blue-500 focus:outline-none">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- صحنه بازی -->
+            <div class="p-8 rounded-2xl bg-gradient-to-br from-green-50 to-blue-50 border-2 border-green-200 shadow-lg">
+                <h4 class="text-xl font-bold text-green-800 mb-6">🎮 دنیای فوکوس</h4>
+                
+                <!-- منطقه بازی -->
+                <div id="gameScene" class="mb-6 min-h-[300px] flex items-center justify-center">
+                    <!-- بازی اینجا به صورت دینامیک رندر می‌شود -->
+                    <div class="text-center text-gray-500">
+                        <i class="fas fa-gamepad text-5xl mb-4 opacity-50"></i>
+                        <p>برای شروع، دکمه "شروع" را بزنید</p>
+                        <p class="text-sm mt-2">دنیای شما با تمرکز رشد می‌کند!</p>
+                    </div>
+                </div>
+                
+                <!-- فروشگاه آپگریدها -->
+                <div class="mb-6" id="upgradesList">
+                    <!-- آپگریدها به صورت دینامیک رندر می‌شوند -->
+                </div>
+                
+                <!-- دکمه‌های کنترل صحنه -->
+                <div class="flex justify-center gap-3">
+                    <button id="prevScene" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300 transition-all text-sm">
+                        <i class="fas fa-arrow-right ml-1"></i> قبلی
+                    </button>
+                    <button id="nextScene" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300 transition-all text-sm">
+                        بعدی <i class="fas fa-arrow-left mr-1"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- پنل امتیازات و دستاوردها -->
+        <div class="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- امتیازات بازی -->
+            <div class="p-6 rounded-2xl bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-200">
+                <h4 class="text-xl font-bold text-yellow-800 mb-6">🏆 پنل امتیازات</h4>
+                
+                <div class="bg-white rounded-xl p-6 mb-6 shadow">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <p class="text-sm text-gray-600">امتیاز کل فوکوس</p>
+                            <h5 class="text-3xl font-bold text-yellow-600" id="focusScore">0</h5>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-sm text-gray-600">سطح</p>
+                            <h5 class="text-3xl font-bold text-blue-600" id="focusLevel">1</h5>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="flex justify-between text-sm text-gray-600 mb-1">
+                            <span>پیشرفت سطح</span>
+                            <span id="levelProgress">0/100</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-4">
+                            <div class="bg-gradient-to-r from-yellow-400 to-orange-500 h-4 rounded-full transition-all duration-500" 
+                                 id="levelProgressBar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- امتیاز بازی -->
+                    <div class="mt-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg">
+                        <p class="text-sm text-purple-600">🎮 امتیاز بازی</p>
+                        <h5 class="text-2xl font-bold text-purple-800" id="gameScore">0</h5>
+                    </div>
+                </div>
+            </div>
+
+            <!-- دستاوردهای فعال -->
+            <div class="p-6 rounded-2xl bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200">
+                <h4 class="text-xl font-bold text-green-800 mb-6">🔥 دستاوردهای فعال</h4>
+                <div class="space-y-3 max-h-[300px] overflow-y-auto pr-2" id="activeAchievements">
+                    <!-- دستاوردها به صورت دینامیک اضافه می‌شوند -->
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-trophy text-3xl mb-3 opacity-50"></i>
+                        <p>هنوز دستاوردی کسب نکرده‌اید</p>
+                        <p class="text-sm mt-2">با تمرکز بیشتر دستاوردها را باز کنید!</p>
+                    </div>
+                </div>
+                
+                <!-- دکمه جمع‌آوری پاداش‌ها -->
+                <button id="collectRewards" class="w-full mt-4 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all font-bold shadow hover:shadow-lg">
+                    <i class="fas fa-gift ml-2"></i> جمع‌آوری پاداش‌ها
+                </button>
+            </div>
+
+            <!-- آیتم‌های قفل شده -->
+            <div class="p-6 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200">
+                <h4 class="text-xl font-bold text-blue-800 mb-6">🔓 آیتم‌های ویژه</h4>
+                
+                <div class="mb-4">
+                    <div class="flex justify-between items-center mb-3">
+                        <h5 class="font-bold text-blue-700">قفل شده‌ها</h5>
+                        <span class="text-sm text-blue-600" id="unlockedCount">0/8 باز شده</span>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3" id="lockedItems">
+                        <!-- آیتم‌های قفل شده -->
+                        <div class="text-center">
+                            <div class="bg-gray-200 p-4 rounded-xl mb-2 relative">
+                                <div class="absolute inset-0 bg-black bg-opacity-40 rounded-xl flex items-center justify-center">
+                                    <i class="fas fa-lock text-white text-xl"></i>
+                                </div>
+                                <i class="fas fa-seedling text-gray-400 text-2xl mb-2"></i>
+                            </div>
+                            <p class="text-xs font-bold text-gray-600">بذر طلایی</p>
+                            <p class="text-xs text-gray-500">سطح 2</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="bg-gray-200 p-4 rounded-xl mb-2 relative">
+                                <div class="absolute inset-0 bg-black bg-opacity-40 rounded-xl flex items-center justify-center">
+                                    <i class="fas fa-lock text-white text-xl"></i>
+                                </div>
+                                <i class="fas fa-tools text-gray-400 text-2xl mb-2"></i>
+                            </div>
+                            <p class="text-xs font-bold text-gray-600">ابزار ویژه</p>
+                            <p class="text-xs text-gray-500">سطح 4</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- نمایش آیتم‌های باز شده -->
+                <div>
+                    <h5 class="font-bold text-green-700 mb-3">✅ آیتم‌های باز شده</h5>
+                    <div class="flex flex-wrap gap-2" id="unlockedItems">
+                        <!-- آیتم‌های باز شده به صورت دینامیک -->
+                        <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                            <i class="fas fa-check ml-1"></i> حالت عادی
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- آمار جلسات -->
+        <div class="mt-8 pt-6 border-t border-gray-200">
+            <h4 class="text-lg font-bold text-blue-800 mb-4">📊 آمار جلسات فوکوس</h4>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl shadow">
+                    <div class="flex items-center mb-2">
+                        <div class="bg-blue-100 p-2 rounded-lg ml-3">
+                            <i class="fas fa-calendar-alt text-blue-600"></i>
+                        </div>
+                        <p class="text-sm text-blue-600">کل جلسات</p>
+                    </div>
+                    <h5 class="text-2xl font-bold text-blue-800" id="totalSessions">0</h5>
+                </div>
+                <div class="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl shadow">
+                    <div class="flex items-center mb-2">
+                        <div class="bg-green-100 p-2 rounded-lg ml-3">
+                            <i class="fas fa-clock text-green-600"></i>
+                        </div>
+                        <p class="text-sm text-green-600">زمان کل (دقیقه)</p>
+                    </div>
+                    <h5 class="text-2xl font-bold text-green-800" id="totalMinutes">0</h5>
+                </div>
+                <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl shadow">
+                    <div class="flex items-center mb-2">
+                        <div class="bg-purple-100 p-2 rounded-lg ml-3">
+                            <i class="fas fa-trophy text-purple-600"></i>
+                        </div>
+                        <p class="text-sm text-purple-600">رکورد زمانی</p>
+                    </div>
+                    <h5 class="text-2xl font-bold text-purple-800" id="timeRecord">0</h5>
+                </div>
+                <div class="bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-xl shadow">
+                    <div class="flex items-center mb-2">
+                        <div class="bg-orange-100 p-2 rounded-lg ml-3">
+                            <i class="fas fa-star text-orange-600"></i>
+                        </div>
+                        <p class="text-sm text-orange-600">امتیاز امروز</p>
+                    </div>
+                    <h5 class="text-2xl font-bold text-orange-800" id="todayScore">0</h5>
+                </div>
+            </div>
+            
+            <!-- نمودار پیشرفت -->
+            <div class="mt-6 p-6 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl">
+                <h5 class="font-bold text-gray-800 mb-4">📈 نمودار پیشرفت هفتگی</h5>
+                <div class="flex items-end h-32 gap-2 justify-between" id="progressChart">
+                    <!-- نمودار به صورت دینامیک -->
+                    <div class="text-center flex-1">
+                        <div class="bg-blue-500 rounded-t-lg mb-2 mx-auto" style="height: 20px; width: 80%;"></div>
+                        <p class="text-xs text-gray-600">شنبه</p>
+                    </div>
+                    <div class="text-center flex-1">
+                        <div class="bg-blue-500 rounded-t-lg mb-2 mx-auto" style="height: 40px; width: 80%;"></div>
+                        <p class="text-xs text-gray-600">یکشنبه</p>
+                    </div>
+                    <div class="text-center flex-1">
+                        <div class="bg-blue-500 rounded-t-lg mb-2 mx-auto" style="height: 60px; width: 80%;"></div>
+                        <p class="text-xs text-gray-600">دوشنبه</p>
+                    </div>
+                    <div class="text-center flex-1">
+                        <div class="bg-blue-500 rounded-t-lg mb-2 mx-auto" style="height: 30px; width: 80%;"></div>
+                        <p class="text-xs text-gray-600">سه‌شنبه</p>
+                    </div>
+                    <div class="text-center flex-1">
+                        <div class="bg-blue-500 rounded-t-lg mb-2 mx-auto" style="height: 70px; width: 80%;"></div>
+                        <p class="text-xs text-gray-600">چهارشنبه</p>
+                    </div>
+                    <div class="text-center flex-1">
+                        <div class="bg-blue-500 rounded-t-lg mb-2 mx-auto" style="height: 50px; width: 80%;"></div>
+                        <p class="text-xs text-gray-600">پنجشنبه</p>
+                    </div>
+                    <div class="text-center flex-1">
+                        <div class="bg-green-500 rounded-t-lg mb-2 mx-auto" style="height: 90px; width: 80%;"></div>
+                        <p class="text-xs text-gray-600">جمعه</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- اعلان‌های ویژه -->
+        <div class="mt-6 p-4 bg-gradient-to-r from-pink-50 to-rose-100 rounded-xl border border-pink-200">
+            <div class="flex items-center">
+                <div class="bg-pink-100 p-3 rounded-full ml-3">
+                    <i class="fas fa-lightbulb text-pink-600 text-xl"></i>
+                </div>
+                <div>
+                    <p class="font-bold text-pink-800">💡 نکته ویژه!</p>
+                    <p class="text-sm text-pink-600">برای رشد سریع‌تر درختان و ساختن خانه‌ها، در چالش‌های ویژه شرکت کنید!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
             </main>
         </div>
     </div>
