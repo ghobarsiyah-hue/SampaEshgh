@@ -50,7 +50,43 @@ let appData = {
         status: 'all',
         search: '',
         displayMode: 'compact' // حالت‌های نمایش: compact, full
-    }
+    },
+    focusData: {
+    focusScore: 0,
+    focusLevel: 1,
+    levelProgress: 0,
+    totalSessions: 0,
+    totalMinutes: 0,
+    timeRecord: 0,
+    todayScore: 0,
+    achievements: [],
+    unlockedItems: [],
+    currentStreak: 0,
+    bestStreak: 0
+},
+timerState: {
+    isRunning: false,
+    isPaused: false,
+    mode: 'normal', // normal, pomodoro, challenge
+    focusMinutes: 25,
+    breakMinutes: 5,
+    timeLeft: 1500, // 25 دقیقه به ثانیه
+    timerInterval: null,
+    sessionType: 'focus' // focus, break
+},
+achievements: [
+    { id: 1, name: "تازه‌کار فوکوس", description: "اولین جلسه فوکوس را کامل کن", points: 100, unlocked: false },
+    { id: 2, name: "تمرکز ۳۰ دقیقه‌ای", description: "یک جلسه ۳۰ دقیقه‌ای فوکوس کامل کن", points: 200, unlocked: false },
+    { id: 3, name: "پومودورو ماستر", description: "۵ جلسه پومودورو کامل کن", points: 300, unlocked: false },
+    { id: 4, name: "سری موفقیت‌ها", description: "۳ روز متوالی فوکوس کن", points: 400, unlocked: false },
+    { id: 5, name: "فوکوس یک ساعته", description: "یک جلسه ۶۰ دقیقه‌ای کامل کن", points: 500, unlocked: false }
+],
+unlockableItems: [
+    { id: 1, name: "تم طلایی", type: "theme", levelRequired: 3, unlocked: false },
+    { id: 2, name: "صدای اعلان ویژه", type: "sound", levelRequired: 5, unlocked: false },
+    { id: 3, name: "آیکون اختصاصی", type: "icon", levelRequired: 7, unlocked: false },
+    { id: 4, name: "عنوان افسانه‌ای", type: "title", levelRequired: 10, unlocked: false }
+]
 };
 
 // داده‌های نمونه برای سوالات
@@ -2001,4 +2037,1486 @@ document.addEventListener('DOMContentLoaded', function() {
             showNotification('تنظیمات با موفقیت ذخیره شد', 'success');
         });
     }
+});
+// ==================== سیستم فوکوس بازی‌گونه - نسخه تمیز ====================
+
+// داده‌های اصلی بازی
+let gameState = {
+    // سیستم شهرسازی
+    city: {
+        name: "شهر تمرکز",
+        level: 1,
+        population: 1,
+        happiness: 50,
+        buildings: [],
+        resources: {
+            wood: 100,
+            stone: 50,
+            gold: 0,
+            knowledge: 0
+        },
+        productionRates: {
+            wood: 1,    // هر 30 ثانیه 1 چوب
+            stone: 0.5, // هر 30 ثانیه 0.5 سنگ
+            gold: 0,    // از ساختمان‌ها
+            knowledge: 2 // هر دقیقه 2 دانش
+        }
+    },
+    
+    // سیستم تحقیق
+    technologies: [],
+    researching: null,
+    researchProgress: 0,
+    researchTimeLeft: 0,
+    
+    // مأموریت‌های فعال
+    activeMissions: [],
+    completedMissions: [],
+    missionProgress: {},
+    
+    // چالش فعال
+    activeChallenge: null,
+    challengeProgress: 0,
+    challengeStreak: 0,
+    
+    // نمودار هفتگی
+    weeklyProgress: {
+        days: [0, 0, 0, 0, 0, 0, 0], // شنبه تا جمعه
+        currentDayIndex: new Date().getDay() === 6 ? 0 : new Date().getDay() + 1,
+        lastUpdate: Date.now()
+    },
+    
+    // آمار فوکوس
+    focusStats: {
+        totalSeconds: 0,
+        todaySeconds: 0,
+        currentStreak: 0,
+        bestStreak: 0,
+        lastSession: null
+    }
+};
+
+// ساختمان‌های قابل ساخت
+const buildings = [
+    {
+        id: 1,
+        name: "نهالستان",
+        type: "tree",
+        description: "درختان سریع‌تر رشد می‌کنند",
+        cost: { wood: 50 },
+        buildTime: 60,
+        effect: "افزایش 50% تولید چوب",
+        level: 1,
+        maxLevel: 5,
+        production: { wood: 5 },
+        sprite: "🌱",
+        category: "production"
+    },
+    {
+        id: 2,
+        name: "معدن سنگ",
+        type: "mine",
+        description: "استخراج سنگ از معادن",
+        cost: { wood: 30, stone: 20 },
+        buildTime: 90,
+        effect: "تولید سنگ فعال می‌شود",
+        level: 1,
+        maxLevel: 3,
+        production: { stone: 3 },
+        sprite: "⛏️",
+        category: "production"
+    },
+    {
+        id: 3,
+        name: "کارگاه",
+        type: "workshop",
+        description: "تبدیل منابع به طلا",
+        cost: { wood: 100, stone: 50 },
+        buildTime: 120,
+        effect: "هر 60 ثانیه 1 طلا تولید می‌کند",
+        level: 1,
+        maxLevel: 4,
+        production: { gold: 1 },
+        sprite: "🏠",
+        category: "production"
+    },
+    {
+        id: 4,
+        name: "کتابخانه",
+        type: "research",
+        description: "افزایش تولید دانش",
+        cost: { wood: 150, stone: 80 },
+        buildTime: 180,
+        effect: "افزایش 100% تولید دانش",
+        level: 1,
+        maxLevel: 3,
+        production: { knowledge: 5 },
+        sprite: "📚",
+        category: "knowledge"
+    }
+];
+
+// تکنولوژی‌های قابل تحقیق
+const technologies = [
+    {
+        id: 1,
+        name: "آبیاری پیشرفته",
+        description: "سیستم آبیاری اتوماتیک",
+        cost: { knowledge: 50 },
+        researchTime: 300, // 5 دقیقه
+        effect: "افزایش 25% تولید کلی",
+        prerequisites: [],
+        sprite: "💧",
+        unlocked: false
+    },
+    {
+        id: 2,
+        name: "مکانیزاسیون",
+        description: "استفاده از ماشین‌آلات",
+        cost: { knowledge: 100 },
+        researchTime: 600, // 10 دقیقه
+        effect: "کاهش 30% زمان ساخت",
+        prerequisites: [1],
+        sprite: "⚙️",
+        unlocked: false
+    }
+];
+
+// مأموریت‌های روزانه
+const dailyMissions = [
+    {
+        id: 1,
+        title: "تمرکز ۱۵ دقیقه‌ای",
+        description: "یک جلسه ۱۵ دقیقه‌ای فوکوس کامل کن",
+        type: "focus",
+        target: 900, // ثانیه
+        reward: { wood: 50, stone: 25 },
+        repeatable: true
+    },
+    {
+        id: 2,
+        title: "ساخت نهالستان",
+        description: "اولین ساختمان خود را بساز",
+        type: "build",
+        target: 1, // ساختمان ID 1
+        reward: { wood: 100, stone: 50 },
+        repeatable: false
+    },
+    {
+        id: 3,
+        title: "تحقیق تکنولوژی",
+        description: "یک تکنولوژی جدید را کشف کن",
+        type: "research",
+        target: 1,
+        reward: { knowledge: 100, gold: 10 },
+        repeatable: true
+    }
+];
+
+// چالش‌های ویژه
+const challenges = [
+    {
+        id: 1,
+        title: "تمرکز ۱ ساعته",
+        description: "۶۰ دقیقه تمرکز بدون وقفه",
+        target: 3600, // ثانیه
+        reward: { gold: 100, knowledge: 200 },
+        streakBonus: 50,
+        active: false
+    }
+];
+
+// ==================== توابع اصلی ====================
+
+// رندر صفحه فوکوس
+function renderFocusPage() {
+    if (!document.getElementById('focusScore')) return;
+    
+    // آپدیت امتیازات
+    updateStatsDisplay();
+    
+    // رندر اجزای مختلف
+    renderCityView();
+    renderResourcesPanel();
+    renderBuildingsPanel();
+    renderTechnologiesPanel();
+    renderMissionsPanel();
+    renderWeeklyChart();
+    
+    // آپدیت تایمر
+    updateTimerDisplay();
+}
+
+// آپدیت نمایش آمار
+function updateStatsDisplay() {
+    document.getElementById('focusScore').textContent = appData.focusData.focusScore;
+    document.getElementById('focusLevel').textContent = appData.focusData.focusLevel;
+    document.getElementById('levelProgress').textContent = `${appData.focusData.levelProgress}/100`;
+    document.getElementById('levelProgressBar').style.width = `${appData.focusData.levelProgress}%`;
+    document.getElementById('totalSessions').textContent = appData.focusData.totalSessions;
+    document.getElementById('totalMinutes').textContent = Math.floor(gameState.focusStats.totalSeconds / 60);
+    document.getElementById('timeRecord').textContent = Math.floor(gameState.focusStats.bestStreak / 60);
+    document.getElementById('todayScore').textContent = Math.floor(gameState.focusStats.todaySeconds / 60);
+}
+
+// رندر نمای شهر
+function renderCityView() {
+    const gameContainer = document.getElementById('gameScene');
+    if (!gameContainer) return;
+    
+    let cityHTML = `
+        <div class="text-center">
+            <h4 class="text-lg font-bold text-blue-800 mb-4">🏙️ ${gameState.city.name}</h4>
+            
+            <div class="relative mx-auto mb-6 p-4 bg-gradient-to-b from-blue-50 to-green-50 rounded-2xl border-2 border-blue-200" 
+                 style="min-height: 300px; max-width: 600px; margin: 0 auto;">
+                
+                <!-- زمین -->
+                <div class="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-green-500 to-emerald-600 rounded-b-2xl"></div>
+                
+                <!-- ساختمان‌ها -->
+                <div class="relative grid grid-cols-2 md:grid-cols-3 gap-4 p-4 mt-8">
+    `;
+    
+    // نمایش ساختمان‌های ساخته شده
+    gameState.city.buildings.forEach((building, index) => {
+        const buildingData = buildings.find(b => b.id === building.id);
+        if (!buildingData) return;
+        
+        const isConstructing = building.constructionProgress < buildingData.buildTime;
+        const progressPercent = isConstructing ? 
+            (building.constructionProgress / buildingData.buildTime) * 100 : 100;
+        
+        cityHTML += `
+            <div class="relative group">
+                <div class="building-card p-4 rounded-xl border-2 ${isConstructing ? 'border-yellow-300 bg-yellow-50' : 'border-green-300 bg-white'} 
+                     shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105 cursor-pointer"
+                     data-building-id="${building.id}">
+                    <div class="text-3xl mb-2 ${isConstructing ? 'opacity-50' : ''}">
+                        ${buildingData.sprite}
+                    </div>
+                    <div class="text-xs font-bold text-gray-700">${buildingData.name}</div>
+                    <div class="text-xs text-gray-500">سطح ${building.level}</div>
+                    
+                    ${isConstructing ? `
+                        <div class="mt-2">
+                            <div class="text-xs text-yellow-600 mb-1">در حال ساخت...</div>
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="bg-yellow-500 h-2 rounded-full transition-all duration-1000" 
+                                     style="width: ${progressPercent}%"></div>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    });
+    
+    // نقطه خالی برای ساخت جدید
+    cityHTML += `
+                    <div class="empty-slot flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-gray-300 
+                         hover:border-green-500 hover:bg-green-50 transition-all cursor-pointer"
+                         onclick="showBuildingMenu()">
+                        <i class="fas fa-plus text-gray-400 text-2xl mb-2"></i>
+                        <div class="text-xs text-gray-600">ساختمان جدید</div>
+                    </div>
+                </div>
+                
+                <!-- اطلاعات شهر -->
+                <div class="absolute bottom-4 left-4 right-4 flex justify-between text-xs">
+                    <div class="bg-white bg-opacity-90 px-3 py-1 rounded-full shadow">
+                        <i class="fas fa-users text-blue-600 ml-1"></i>
+                        جمعیت: ${gameState.city.population}
+                    </div>
+                    <div class="bg-white bg-opacity-90 px-3 py-1 rounded-full shadow">
+                        <i class="fas fa-smile text-yellow-600 ml-1"></i>
+                        رضایت: ${gameState.city.happiness}%
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    gameContainer.innerHTML = cityHTML;
+    
+    // اضافه کردن event listener برای ساختمان‌ها
+    document.querySelectorAll('.building-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const buildingId = parseInt(this.getAttribute('data-building-id'));
+            showBuildingDetails(buildingId);
+        });
+    });
+}
+
+// رادر پنل منابع
+function renderResourcesPanel() {
+    const container = document.getElementById('resourcesPanel') || createResourcesPanel();
+    
+    container.innerHTML = `
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="bg-gradient-to-br from-green-50 to-emerald-50 p-3 rounded-xl border border-green-200">
+                <div class="flex items-center">
+                    <div class="bg-green-100 p-2 rounded-lg ml-2">
+                        <i class="fas fa-tree text-green-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-green-600">چوب</p>
+                        <h5 class="text-lg font-bold text-green-800">${gameState.city.resources.wood}</h5>
+                    </div>
+                </div>
+                <div class="text-xs text-green-700 mt-1">
+                    <i class="fas fa-arrow-up ml-1"></i>
+                    ${gameState.city.productionRates.wood}/۳۰ثانیه
+                </div>
+            </div>
+            
+            <div class="bg-gradient-to-br from-gray-50 to-gray-100 p-3 rounded-xl border border-gray-200">
+                <div class="flex items-center">
+                    <div class="bg-gray-100 p-2 rounded-lg ml-2">
+                        <i class="fas fa-mountain text-gray-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-600">سنگ</p>
+                        <h5 class="text-lg font-bold text-gray-800">${gameState.city.resources.stone}</h5>
+                    </div>
+                </div>
+                <div class="text-xs text-gray-700 mt-1">
+                    <i class="fas fa-arrow-up ml-1"></i>
+                    ${gameState.city.productionRates.stone}/۳۰ثانیه
+                </div>
+            </div>
+            
+            <div class="bg-gradient-to-br from-yellow-50 to-amber-50 p-3 rounded-xl border border-yellow-200">
+                <div class="flex items-center">
+                    <div class="bg-yellow-100 p-2 rounded-lg ml-2">
+                        <i class="fas fa-coins text-yellow-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-yellow-600">طلا</p>
+                        <h5 class="text-lg font-bold text-yellow-800">${gameState.city.resources.gold}</h5>
+                    </div>
+                </div>
+                <div class="text-xs text-yellow-700 mt-1">
+                    <i class="fas fa-building ml-1"></i>
+                    از ساختمان‌ها
+                </div>
+            </div>
+            
+            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-3 rounded-xl border border-blue-200">
+                <div class="flex items-center">
+                    <div class="bg-blue-100 p-2 rounded-lg ml-2">
+                        <i class="fas fa-graduation-cap text-blue-600"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-blue-600">دانش</p>
+                        <h5 class="text-lg font-bold text-blue-800">${gameState.city.resources.knowledge}</h5>
+                    </div>
+                </div>
+                <div class="text-xs text-blue-700 mt-1">
+                    <i class="fas fa-arrow-up ml-1"></i>
+                    ${gameState.city.productionRates.knowledge}/دقیقه
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// ایجاد پنل منابع اگر وجود ندارد
+function createResourcesPanel() {
+    const panel = document.createElement('div');
+    panel.id = 'resourcesPanel';
+    panel.className = 'mb-6';
+    
+    const gameScene = document.getElementById('gameScene');
+    if (gameScene && gameScene.parentNode) {
+        gameScene.parentNode.insertBefore(panel, gameScene.nextSibling);
+    }
+    
+    return panel;
+}
+
+// رندر پنل ساختمان‌ها
+function renderBuildingsPanel() {
+    const container = document.getElementById('upgradesList');
+    if (!container) return;
+    
+    let buildingsHTML = `
+        <div class="mb-6">
+            <h5 class="font-bold text-blue-700 mb-3 flex items-center">
+                <i class="fas fa-city ml-2"></i> ساختمان‌های قابل ساخت
+            </h5>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    `;
+    
+    buildings.forEach(building => {
+        const isBuilt = gameState.city.buildings.some(b => b.id === building.id);
+        const canAfford = canBuildBuilding(building.id);
+        
+        buildingsHTML += `
+            <div class="bg-white p-4 rounded-lg border ${canAfford && !isBuilt ? 'border-blue-200 hover:border-blue-400 cursor-pointer' : 'border-gray-200'} 
+                 transition-all ${!canAfford || isBuilt ? 'opacity-75' : ''}"
+                 ${canAfford && !isBuilt ? `onclick="startBuilding(${building.id})"` : ''}>
+                <div class="flex items-start mb-3">
+                    <div class="text-2xl ml-3">${building.sprite}</div>
+                    <div class="flex-1">
+                        <h6 class="font-bold text-gray-800">${building.name}</h6>
+                        <p class="text-xs text-gray-600">${building.description}</p>
+                    </div>
+                    ${isBuilt ? `
+                        <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
+                            ساخته شده
+                        </span>
+                    ` : ''}
+                </div>
+                
+                <div class="text-xs text-gray-500 mb-2">${building.effect}</div>
+                
+                <div class="space-y-1 mb-3">
+                    ${building.cost.wood ? `
+                        <div class="flex justify-between items-center">
+                            <span class="text-green-600">چوب:</span>
+                            <span class="font-bold ${gameState.city.resources.wood >= building.cost.wood ? 'text-green-700' : 'text-red-600'}">
+                                ${building.cost.wood}
+                            </span>
+                        </div>
+                    ` : ''}
+                    ${building.cost.stone ? `
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600">سنگ:</span>
+                            <span class="font-bold ${gameState.city.resources.stone >= building.cost.stone ? 'text-gray-700' : 'text-red-600'}">
+                                ${building.cost.stone}
+                            </span>
+                        </div>
+                    ` : ''}
+                </div>
+                
+                <div class="text-xs text-center text-gray-500">
+                    زمان ساخت: ${Math.floor(building.buildTime / 60)} دقیقه
+                </div>
+            </div>
+        `;
+    });
+    
+    buildingsHTML += `
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = buildingsHTML;
+}
+
+// رندر پنل تکنولوژی‌ها
+function renderTechnologiesPanel() {
+    const container = document.getElementById('researchPanel');
+    if (!container) return;
+    
+    let techHTML = `
+        <div class="bg-gradient-to-br from-purple-50 to-indigo-50 p-4 rounded-xl border border-purple-200">
+            <h5 class="font-bold text-purple-700 mb-3 flex items-center">
+                <i class="fas fa-flask ml-2"></i> تحقیقات
+            </h5>
+    `;
+    
+    if (gameState.researching) {
+        const tech = technologies.find(t => t.id === gameState.researching);
+        if (tech) {
+            const progressPercent = (1 - gameState.researchTimeLeft / tech.researchTime) * 100;
+            
+            techHTML += `
+                <div class="mb-4">
+                    <div class="flex items-center mb-2">
+                        <div class="text-2xl ml-2">${tech.sprite}</div>
+                        <div>
+                            <h6 class="font-bold text-purple-800">${tech.name}</h6>
+                            <p class="text-xs text-purple-600">در حال تحقیق...</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-1">
+                        <div class="flex justify-between text-xs text-purple-600 mb-1">
+                            <span>پیشرفت</span>
+                            <span>${Math.floor(progressPercent)}%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-gradient-to-r from-purple-500 to-indigo-500 h-2 rounded-full transition-all duration-1000" 
+                                 style="width: ${progressPercent}%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-xs text-center text-gray-500 mt-2">
+                        ${Math.ceil(gameState.researchTimeLeft / 60)} دقیقه باقی‌مانده
+                    </div>
+                </div>
+            `;
+        }
+    }
+    
+    techHTML += `
+        <div class="space-y-3">
+    `;
+    
+    technologies.forEach(tech => {
+        const isResearched = gameState.technologies.includes(tech.id);
+        const prerequisitesMet = tech.prerequisites.every(p => gameState.technologies.includes(p));
+        const canResearch = !isResearched && prerequisitesMet && 
+                           gameState.city.resources.knowledge >= tech.cost.knowledge;
+        
+        techHTML += `
+            <div class="flex items-center justify-between p-3 rounded-lg ${isResearched ? 'bg-green-100 border border-green-200' : 'bg-white border border-gray-200'}">
+                <div class="flex items-center">
+                    <div class="text-xl ml-3">${tech.sprite}</div>
+                    <div>
+                        <h6 class="font-bold ${isResearched ? 'text-green-800' : 'text-gray-800'}">${tech.name}</h6>
+                        <p class="text-xs ${isResearched ? 'text-green-600' : 'text-gray-600'}">${tech.description}</p>
+                    </div>
+                </div>
+                
+                ${!isResearched ? `
+                    <button onclick="${canResearch ? `startResearch(${tech.id})` : ''}" 
+                            class="px-3 py-1 ${canResearch ? 'bg-purple-500 hover:bg-purple-600 text-white' : 'bg-gray-300 text-gray-500'} rounded text-sm">
+                        ${canResearch ? `${tech.cost.knowledge} دانش` : 'قفل شده'}
+                    </button>
+                ` : `
+                    <span class="px-3 py-1 bg-green-100 text-green-800 rounded text-sm">
+                        <i class="fas fa-check ml-1"></i> تحقیق شده
+                    </span>
+                `}
+            </div>
+        `;
+    });
+    
+    techHTML += `
+        </div>
+    </div>`;
+    
+    container.innerHTML = techHTML;
+}
+
+// رندر پنل مأموریت‌ها
+function renderMissionsPanel() {
+    const container = document.getElementById('missionsPanel');
+    if (!container) return;
+    
+    // اگر مأموریت فعالی نداریم، ایجاد کن
+    if (gameState.activeMissions.length === 0) {
+        initializeDailyMissions();
+    }
+    
+    let missionsHTML = `
+        <div class="bg-gradient-to-br from-orange-50 to-yellow-50 p-4 rounded-xl border border-orange-200">
+            <h5 class="font-bold text-orange-700 mb-3 flex items-center">
+                <i class="fas fa-tasks ml-2"></i> مأموریت‌های روزانه
+            </h5>
+            
+            <div class="space-y-3">
+    `;
+    
+    gameState.activeMissions.forEach(missionData => {
+        const mission = dailyMissions.find(m => m.id === missionData.id);
+        if (!mission) return;
+        
+        const progress = gameState.missionProgress[mission.id] || 0;
+        const isCompleted = progress >= mission.target;
+        const progressPercent = (progress / mission.target) * 100;
+        
+        missionsHTML += `
+            <div class="bg-white p-3 rounded-lg border ${isCompleted ? 'border-green-200 bg-green-50' : 'border-gray-200'}">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <h6 class="font-bold ${isCompleted ? 'text-green-800' : 'text-gray-800'}">
+                            ${mission.title}
+                        </h6>
+                        <p class="text-xs ${isCompleted ? 'text-green-600' : 'text-gray-600'}">
+                            ${mission.description}
+                        </p>
+                    </div>
+                    ${isCompleted ? `
+                        <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
+                            تکمیل شده
+                        </span>
+                    ` : ''}
+                </div>
+                
+                <div class="mb-2">
+                    <div class="flex justify-between text-xs text-gray-600 mb-1">
+                        <span>پیشرفت</span>
+                        <span>${Math.floor(progress)}/${mission.target}</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div class="bg-gradient-to-r from-orange-400 to-yellow-400 h-2 rounded-full transition-all duration-1000" 
+                             style="width: ${Math.min(progressPercent, 100)}%"></div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-between items-center">
+                    <div class="text-xs text-gray-500">
+                        جایزه: 
+                        ${mission.reward.wood ? `<i class="fas fa-tree text-green-500 ml-1"></i> ${mission.reward.wood} ` : ''}
+                        ${mission.reward.stone ? `<i class="fas fa-mountain text-gray-500 ml-1"></i> ${mission.reward.stone} ` : ''}
+                        ${mission.reward.knowledge ? `<i class="fas fa-graduation-cap text-blue-500 ml-1"></i> ${mission.reward.knowledge}` : ''}
+                    </div>
+                    ${isCompleted ? `
+                        <button onclick="claimMissionReward(${mission.id})" 
+                                class="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600 transition-colors">
+                            دریافت جایزه
+                        </button>
+                    ` : `
+                        <span class="px-3 py-1 bg-gray-300 text-gray-500 rounded text-sm">
+                            در حال انجام
+                        </span>
+                    `}
+                </div>
+            </div>
+        `;
+    });
+    
+    missionsHTML += `
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = missionsHTML;
+}
+
+// رندر نمودار هفتگی واقعی
+function renderWeeklyChart() {
+    const chartContainer = document.getElementById('progressChart');
+    if (!chartContainer) return;
+    
+    const dayNames = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
+    const maxValue = Math.max(...gameState.weeklyProgress.days, 1);
+    
+    let chartHTML = `
+        <div class="flex items-end h-40 gap-2 justify-between">
+    `;
+    
+    gameState.weeklyProgress.days.forEach((value, index) => {
+        const heightPercent = maxValue > 0 ? (value / maxValue) * 100 : 0;
+        const isToday = index === gameState.weeklyProgress.currentDayIndex;
+        
+        chartHTML += `
+            <div class="text-center flex-1">
+                <div class="relative mb-2 mx-auto" style="width: 80%;">
+                    <div class="bg-gradient-to-t ${isToday ? 'from-green-500 to-emerald-600' : 'from-blue-400 to-blue-500'} 
+                         rounded-t-lg transition-all duration-1000" 
+                         style="height: ${heightPercent}%;">
+                         
+                        <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-white px-2 py-1 rounded-lg shadow text-xs font-bold
+                             ${isToday ? 'text-green-700' : 'text-blue-700'}">
+                            ${Math.floor(value / 60)} دقیقه
+                        </div>
+                    </div>
+                </div>
+                <p class="text-xs ${isToday ? 'text-green-700 font-bold' : 'text-gray-600'}">${dayNames[index]}</p>
+            </div>
+        `;
+    });
+    
+    chartHTML += `</div>`;
+    
+    chartContainer.innerHTML = chartHTML;
+}
+
+// ==================== سیستم تایمر تمیز ====================
+
+// شروع تایمر حالت عادی (شمارنده رو به بالا)
+function startTimer() {
+    if (appData.timerState.isRunning) return;
+    
+    appData.timerState.isRunning = true;
+    appData.timerState.isPaused = false;
+    appData.timerState.startTime = Date.now();
+    
+    updateTimerControls();
+    showNotification('⏱️ تایمر شروع شد! موفق باشید 🚀', 'success');
+    
+    // پاک کردن اینتروال قبلی
+    if (appData.timerState.timerInterval) {
+        clearInterval(appData.timerState.timerInterval);
+    }
+    
+    // شروع شمارنده رو به بالا
+    appData.timerState.timerInterval = setInterval(() => {
+        // افزایش ثانیه‌ها
+        appData.timerState.elapsedSeconds = Math.floor((Date.now() - appData.timerState.startTime) / 1000);
+        updateTimerDisplay();
+        
+        // هر ۳۰ ثانیه: تولید منابع
+        if (appData.timerState.elapsedSeconds % 30 === 0) {
+            produceResources();
+        }
+        
+        // هر دقیقه: پیشرفت مأموریت‌ها
+        if (appData.timerState.elapsedSeconds % 60 === 0) {
+            updateMissionProgress();
+            updateWeeklyProgress();
+        }
+        
+        // هر ۵ دقیقه: تولید دانش
+        if (appData.timerState.elapsedSeconds % 300 === 0) {
+            produceKnowledge();
+        }
+        
+        // بررسی چالش
+        if (gameState.activeChallenge) {
+            updateChallengeProgress();
+        }
+        
+        // رندر صفحه
+        renderFocusPage();
+        
+    }, 1000); // به‌روزرسانی هر ثانیه
+}
+
+// توقف تایمر
+function pauseTimer() {
+    if (!appData.timerState.isRunning) return;
+    
+    appData.timerState.isRunning = false;
+    appData.timerState.isPaused = true;
+    appData.timerState.pauseTime = Date.now();
+    
+    clearInterval(appData.timerState.timerInterval);
+    
+    // نمایش دکمه ادامه
+    document.getElementById('pauseTimer').style.display = 'none';
+    document.getElementById('continueTimer').style.display = 'inline-flex';
+    
+    showNotification('⏸️ تایمر متوقف شد', 'warning');
+}
+
+// ادامه تایمر
+function continueTimer() {
+    if (!appData.timerState.isPaused) return;
+    
+    // محاسبه زمان توقف
+    const pauseDuration = Date.now() - appData.timerState.pauseTime;
+    appData.timerState.startTime += pauseDuration;
+    
+    appData.timerState.isRunning = true;
+    appData.timerState.isPaused = false;
+    
+    // پنهان کردن دکمه ادامه
+    document.getElementById('continueTimer').style.display = 'none';
+    document.getElementById('pauseTimer').style.display = 'inline-flex';
+    
+    // ادامه تایمر
+    appData.timerState.timerInterval = setInterval(() => {
+        appData.timerState.elapsedSeconds = Math.floor((Date.now() - appData.timerState.startTime) / 1000);
+        updateTimerDisplay();
+        
+        // سایر عملیات...
+        if (appData.timerState.elapsedSeconds % 30 === 0) {
+            produceResources();
+        }
+        
+        renderFocusPage();
+    }, 1000);
+    
+    showNotification('▶️ تایمر ادامه یافت', 'success');
+}
+
+// پایان فوکوس (دستی توسط کاربر)
+function endFocusSession() {
+    if (!appData.timerState.isRunning && !appData.timerState.isPaused) return;
+    
+    // توقف تایمر
+    clearInterval(appData.timerState.timerInterval);
+    
+    // محاسبه کل زمان
+    const totalSeconds = appData.timerState.elapsedSeconds || 0;
+    
+    // ثبت آمار
+    gameState.focusStats.totalSeconds += totalSeconds;
+    gameState.focusStats.todaySeconds += totalSeconds;
+    gameState.focusStats.lastSession = Date.now();
+    
+    // آپدیت نمودار هفتگی
+    updateWeeklyProgress(totalSeconds);
+    
+    // محاسبه پاداش‌ها
+    calculateSessionRewards(totalSeconds);
+    
+    // نمایش نتایج
+    showSessionResults(totalSeconds);
+    
+    // ریست تایمر
+    resetTimer();
+    
+    showNotification('🎉 جلسه فوکوس با موفقیت پایان یافت!', 'success');
+}
+
+// محاسبه پاداش‌های جلسه
+function calculateSessionRewards(seconds) {
+    const minutes = seconds / 60;
+    
+    // امتیاز پایه
+    let basePoints = minutes * 10;
+    
+    // ضریب ساختمان‌ها
+    let multiplier = 1.0;
+    gameState.city.buildings.forEach(building => {
+        const buildingData = buildings.find(b => b.id === building.id);
+        if (buildingData && !building.constructionProgress) {
+            // اعمال اثر ساختمان‌ها
+            if (buildingData.type === 'tree') multiplier *= 1.2;
+            if (buildingData.type === 'mine') multiplier *= 1.1;
+            if (buildingData.type === 'workshop') multiplier *= 1.3;
+        }
+    });
+    
+    // ضریب تکنولوژی‌ها
+    gameState.technologies.forEach(techId => {
+        const tech = technologies.find(t => t.id === techId);
+        if (tech) {
+            if (tech.id === 1) multiplier *= 1.25; // آبیاری پیشرفته
+            if (tech.id === 2) multiplier *= 1.15; // مکانیزاسیون
+        }
+    });
+    
+    // ضریب رضایت
+    multiplier *= (gameState.city.happiness / 100);
+    
+    // محاسبه نهایی
+    const finalPoints = Math.floor(basePoints * multiplier);
+    
+    // اضافه کردن امتیاز
+    appData.focusData.focusScore += finalPoints;
+    appData.focusData.levelProgress += finalPoints;
+    
+    // تولید منابع بر اساس زمان
+    const resourcesGained = {
+        wood: Math.floor(minutes * gameState.city.productionRates.wood * multiplier),
+        stone: Math.floor(minutes * gameState.city.productionRates.stone * multiplier),
+        knowledge: Math.floor(minutes * gameState.city.productionRates.knowledge * multiplier)
+    };
+    
+    // اضافه کردن منابع
+    gameState.city.resources.wood += resourcesGained.wood;
+    gameState.city.resources.stone += resourcesGained.stone;
+    gameState.city.resources.knowledge += resourcesGained.knowledge;
+    
+    // تولید طلا از ساختمان‌ها
+    gameState.city.buildings.forEach(building => {
+        const buildingData = buildings.find(b => b.id === building.id);
+        if (buildingData && buildingData.production && buildingData.production.gold && !building.constructionProgress) {
+            gameState.city.resources.gold += Math.floor(minutes * buildingData.production.gold * multiplier);
+        }
+    });
+    
+    // افزایش جمعیت
+    if (finalPoints > 1000) {
+        gameState.city.population += Math.floor(finalPoints / 1000);
+    }
+    
+    // افزایش رضایت
+    gameState.city.happiness = Math.min(gameState.city.happiness + Math.floor(minutes / 5), 100);
+    
+    // بررسی ارتقای سطح
+    while (appData.focusData.levelProgress >= 100) {
+        appData.focusData.level++;
+        appData.focusData.levelProgress -= 100;
+        
+        // پاداش سطح
+        const levelReward = appData.focusData.level * 100;
+        appData.focusData.focusScore += levelReward;
+        gameState.city.resources.gold += levelReward;
+        
+        showNotification(`🎯 سطح ${appData.focusData.level} رسیدی! +${levelReward} امتیاز`, 'success');
+    }
+    
+    return {
+        points: finalPoints,
+        resources: resourcesGained,
+        multiplier: multiplier.toFixed(2)
+    };
+}
+
+// نمایش نتایج جلسه
+function showSessionResults(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const rewards = calculateSessionRewards(seconds);
+    
+    const resultsHTML = `
+        <div class="modal open" id="sessionResultsModal">
+            <div class="modal-content max-w-md">
+                <div class="text-center p-6">
+                    <div class="text-5xl mb-4">🏆</div>
+                    <h3 class="text-xl font-bold text-green-800 mb-2">جلسه فوکوس تکمیل شد!</h3>
+                    <p class="text-gray-600 mb-6">${minutes} دقیقه تمرکز عالی داشتید</p>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl">
+                            <div class="text-2xl text-blue-600 mb-2">⏱️</div>
+                            <p class="text-sm text-blue-700">مدت زمان</p>
+                            <h4 class="text-lg font-bold text-blue-800">${minutes} دقیقه</h4>
+                        </div>
+                        <div class="bg-gradient-to-br from-yellow-50 to-amber-100 p-4 rounded-xl">
+                            <div class="text-2xl text-yellow-600 mb-2">⭐</div>
+                            <p class="text-sm text-yellow-700">امتیاز کسب شده</p>
+                            <h4 class="text-lg font-bold text-yellow-800">${rewards.points}</h4>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl mb-6">
+                        <h4 class="font-bold text-green-800 mb-3">🎁 منابع کسب شده</h4>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="flex items-center">
+                                <i class="fas fa-tree text-green-600 ml-2"></i>
+                                <span class="text-gray-700">چوب:</span>
+                                <span class="font-bold text-green-700 mr-auto">+${rewards.resources.wood}</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fas fa-mountain text-gray-600 ml-2"></i>
+                                <span class="text-gray-700">سنگ:</span>
+                                <span class="font-bold text-gray-700 mr-auto">+${rewards.resources.stone}</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fas fa-coins text-yellow-600 ml-2"></i>
+                                <span class="text-gray-700">طلا:</span>
+                                <span class="font-bold text-yellow-700 mr-auto">+${gameState.city.resources.gold}</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fas fa-graduation-cap text-blue-600 ml-2"></i>
+                                <span class="text-gray-700">دانش:</span>
+                                <span class="font-bold text-blue-700 mr-auto">+${rewards.resources.knowledge}</span>
+                            </div>
+                        </div>
+                        <div class="text-xs text-center text-gray-500 mt-3">
+                            ضریب عملکرد: ${rewards.multiplier}x
+                        </div>
+                    </div>
+                    
+                    <button onclick="closeModal('sessionResultsModal')" 
+                            class="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full hover:from-green-600 hover:to-emerald-700 font-bold shadow-lg hover:shadow-xl transition-all">
+                        بستن و ادامه
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('modalContainer').innerHTML = resultsHTML;
+}
+
+// ==================== توابع سیستم منابع ====================
+
+// تولید منابع بر اساس ساختمان‌ها
+function produceResources() {
+    // تولید پایه (چوب و سنگ)
+    gameState.city.resources.wood += gameState.city.productionRates.wood;
+    gameState.city.resources.stone += gameState.city.productionRates.stone;
+    
+    // تولید از ساختمان‌ها
+    gameState.city.buildings.forEach(building => {
+        if (!building.constructionProgress) { // اگر ساختمان کامل شده
+            const buildingData = buildings.find(b => b.id === building.id);
+            if (buildingData && buildingData.production) {
+                Object.keys(buildingData.production).forEach(resource => {
+                    gameState.city.resources[resource] += buildingData.production[resource];
+                });
+            }
+        }
+    });
+    
+    renderFocusPage();
+}
+
+// تولید دانش
+function produceKnowledge() {
+    // تولید پایه دانش
+    gameState.city.resources.knowledge += gameState.city.productionRates.knowledge;
+    
+    // تولید از ساختمان‌های دانش
+    gameState.city.buildings.forEach(building => {
+        const buildingData = buildings.find(b => b.id === building.id);
+        if (buildingData && buildingData.category === 'knowledge' && !building.constructionProgress) {
+            gameState.city.resources.knowledge += buildingData.production.knowledge || 0;
+        }
+    });
+    
+    renderFocusPage();
+}
+
+// ==================== توابع ساختمان‌ها ====================
+
+// بررسی امکان ساخت ساختمان
+function canBuildBuilding(buildingId) {
+    const building = buildings.find(b => b.id === buildingId);
+    if (!building) return false;
+    
+    // بررسی اینکه قبلاً ساخته نشده باشد
+    if (gameState.city.buildings.some(b => b.id === buildingId && !b.constructionProgress)) {
+        return false;
+    }
+    
+    // بررسی منابع
+    return (
+        gameState.city.resources.wood >= (building.cost.wood || 0) &&
+        gameState.city.resources.stone >= (building.cost.stone || 0)
+    );
+}
+
+// شروع ساخت ساختمان
+function startBuilding(buildingId) {
+    if (!canBuildBuilding(buildingId)) {
+        showNotification('منابع کافی نیست یا ساختمان قبلاً ساخته شده', 'error');
+        return;
+    }
+    
+    const building = buildings.find(b => b.id === buildingId);
+    
+    // کسر منابع
+    gameState.city.resources.wood -= building.cost.wood || 0;
+    gameState.city.resources.stone -= building.cost.stone || 0;
+    
+    // اضافه کردن ساختمان در حال ساخت
+    const newBuilding = {
+        id: building.id,
+        level: 1,
+        constructionProgress: 0,
+        constructionTime: building.buildTime
+    };
+    
+    gameState.city.buildings.push(newBuilding);
+    
+    // شروع تایمر ساخت
+    const buildInterval = setInterval(() => {
+        const buildingIndex = gameState.city.buildings.findIndex(b => 
+            b.id === buildingId && b.constructionProgress < b.constructionTime
+        );
+        
+        if (buildingIndex !== -1) {
+            gameState.city.buildings[buildingIndex].constructionProgress++;
+            
+            // اگر ساخت کامل شد
+            if (gameState.city.buildings[buildingIndex].constructionProgress >= building.buildTime) {
+                clearInterval(buildInterval);
+                
+                // افزایش جمعیت
+                gameState.city.population += 5;
+                
+                // افزایش رضایت
+                gameState.city.happiness = Math.min(gameState.city.happiness + 10, 100);
+                
+                // افزایش نرخ تولید
+                if (building.type === 'tree') {
+                    gameState.city.productionRates.wood *= 1.5;
+                } else if (building.type === 'mine') {
+                    gameState.city.productionRates.stone *= 2.0;
+                }
+                
+                showNotification(`🎉 ${building.name} با موفقیت ساخته شد!`, 'success');
+                
+                // به‌روزرسانی مأموریت ساخت ساختمان
+                updateMissionProgress(buildingId, 'build');
+            }
+            
+            renderFocusPage();
+        } else {
+            clearInterval(buildInterval);
+        }
+    }, 1000);
+    
+    showNotification(`🏗️ ساخت ${building.name} آغاز شد!`, 'success');
+    renderFocusPage();
+}
+
+// ==================== توابع تحقیق ====================
+
+// شروع تحقیق تکنولوژی
+function startResearch(techId) {
+    const tech = technologies.find(t => t.id === techId);
+    if (!tech || gameState.researching) return;
+    
+    // بررسی دانش کافی
+    if (gameState.city.resources.knowledge < tech.cost.knowledge) {
+        showNotification('دانش کافی نیست', 'error');
+        return;
+    }
+    
+    // کسر دانش
+    gameState.city.resources.knowledge -= tech.cost.knowledge;
+    
+    // شروع تحقیق
+    gameState.researching = techId;
+    gameState.researchTimeLeft = tech.researchTime;
+    
+    // تایمر تحقیق
+    const researchInterval = setInterval(() => {
+        if (gameState.researchTimeLeft > 0) {
+            gameState.researchTimeLeft--;
+            gameState.researchProgress = ((tech.researchTime - gameState.researchTimeLeft) / tech.researchTime) * 100;
+        } else {
+            clearInterval(researchInterval);
+            completeResearch(techId);
+        }
+        
+        renderFocusPage();
+    }, 1000);
+    
+    showNotification(`🔬 تحقیق "${tech.name}" آغاز شد!`, 'success');
+    renderFocusPage();
+}
+
+// تکمیل تحقیق
+function completeResearch(techId) {
+    const tech = technologies.find(t => t.id === techId);
+    if (!tech) return;
+    
+    gameState.technologies.push(techId);
+    gameState.researching = null;
+    gameState.researchProgress = 0;
+    
+    // اعمال اثر تکنولوژی
+    if (tech.id === 1) { // آبیاری پیشرفته
+        gameState.city.productionRates.wood *= 1.25;
+        gameState.city.productionRates.stone *= 1.25;
+    } else if (tech.id === 2) { // مکانیزاسیون
+        // کاهش زمان ساخت ساختمان‌ها
+        buildings.forEach(b => {
+            b.buildTime = Math.floor(b.buildTime * 0.7);
+        });
+    }
+    
+    // به‌روزرسانی مأموریت
+    updateMissionProgress(techId, 'research');
+    
+    showNotification(`🎓 تکنولوژی "${tech.name}" کشف شد!`, 'success');
+    renderFocusPage();
+}
+
+// ==================== توابع مأموریت‌ها ====================
+
+// مقداردهی اولیه مأموریت‌های روزانه
+function initializeDailyMissions() {
+    // پاک کردن مأموریت‌های قدیمی
+    gameState.activeMissions = [];
+    gameState.missionProgress = {};
+    
+    // انتخاب ۳ مأموریت تصادفی
+    const shuffledMissions = [...dailyMissions].sort(() => Math.random() - 0.5);
+    const selectedMissions = shuffledMissions.slice(0, 3);
+    
+    selectedMissions.forEach(mission => {
+        gameState.activeMissions.push({
+            id: mission.id,
+            claimed: false
+        });
+        gameState.missionProgress[mission.id] = 0;
+    });
+}
+
+// پیشرفت مأموریت‌ها
+function updateMissionProgress(targetId = null, type = 'focus') {
+    gameState.activeMissions.forEach(missionData => {
+        const mission = dailyMissions.find(m => m.id === missionData.id);
+        if (!mission || missionData.claimed) return;
+        
+        let progress = gameState.missionProgress[mission.id] || 0;
+        
+        switch(mission.type) {
+            case 'focus':
+                // هر دقیقه ۶۰ ثانیه به پیشرفت اضافه می‌شود
+                progress = Math.min(progress + 60, mission.target);
+                break;
+                
+            case 'build':
+                if (type === 'build' && targetId === mission.target) {
+                    progress = mission.target;
+                }
+                break;
+                
+            case 'research':
+                if (type === 'research') {
+                    progress = mission.target;
+                }
+                break;
+        }
+        
+        gameState.missionProgress[mission.id] = progress;
+        
+        // اگر مأموریت تکمیل شد
+        if (progress >= mission.target && !missionData.claimed) {
+            showNotification(`✅ مأموریت "${mission.title}" تکمیل شد!`, 'success');
+        }
+    });
+    
+    renderFocusPage();
+}
+
+// دریافت جایزه مأموریت
+function claimMissionReward(missionId) {
+    const mission = dailyMissions.find(m => m.id === missionId);
+    const missionData = gameState.activeMissions.find(m => m.id === missionId);
+    
+    if (!mission || !missionData || missionData.claimed) return;
+    
+    // اعمال جایزه
+    Object.keys(mission.reward).forEach(resource => {
+        gameState.city.resources[resource] += mission.reward[resource];
+    });
+    
+    // علامت‌گذاری به عنوان دریافت شده
+    missionData.claimed = true;
+    
+    // اگر قابل تکرار نیست، حذفش کن
+    if (!mission.repeatable) {
+        const index = gameState.activeMissions.findIndex(m => m.id === missionId);
+        if (index !== -1) {
+            gameState.activeMissions.splice(index, 1);
+        }
+    } else {
+        // ریست پیشرفت
+        gameState.missionProgress[missionId] = 0;
+    }
+    
+    showNotification(`🎁 جایزه مأموریت "${mission.title}" دریافت شد!`, 'success');
+    renderFocusPage();
+}
+
+// ==================== نمودار هفتگی ====================
+
+// آپدیت نمودار هفتگی
+function updateWeeklyProgress(seconds = 0) {
+    // اگر زمان داده نشده، از تایمر فعلی بگیر
+    if (seconds === 0 && appData.timerState.elapsedSeconds) {
+        seconds = appData.timerState.elapsedSeconds;
+    }
+    
+    const minutes = seconds / 60;
+    
+    // آپدیت روز جاری
+    gameState.weeklyProgress.days[gameState.weeklyProgress.currentDayIndex] += minutes;
+    
+    // بررسی تغییر روز
+    const now = new Date();
+    const todayIndex = now.getDay() === 6 ? 0 : now.getDay() + 1;
+    
+    if (todayIndex !== gameState.weeklyProgress.currentDayIndex) {
+        gameState.weeklyProgress.currentDayIndex = todayIndex;
+        gameState.weeklyProgress.lastUpdate = now.getTime();
+        
+        // ریست آمار روزانه
+        gameState.focusStats.todaySeconds = 0;
+        
+        // ایجاد مأموریت‌های جدید روزانه
+        if (now.getHours() >= 0 && now.getHours() < 6) {
+            initializeDailyMissions();
+        }
+    }
+    
+    renderWeeklyChart();
+}
+
+// ==================== توابع کمکی ====================
+
+// آپدیت نمایش تایمر (شمارنده رو به بالا)
+function updateTimerDisplay() {
+    const timerDisplay = document.getElementById('timerDisplay');
+    if (!timerDisplay) return;
+    
+    const seconds = appData.timerState.elapsedSeconds || 0;
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainingSeconds = seconds % 60;
+    
+    if (hours > 0) {
+        timerDisplay.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    } else {
+        timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+    
+    // افکت ویژه بعد از ۵ دقیقه
+    if (seconds >= 300) {
+        timerDisplay.classList.add('text-green-600', 'font-bold');
+    } else {
+        timerDisplay.classList.remove('text-green-600', 'font-bold');
+    }
+}
+
+// آپدیت کنترل‌های تایمر
+function updateTimerControls() {
+    const startBtn = document.getElementById('startTimer');
+    const pauseBtn = document.getElementById('pauseTimer');
+    const continueBtn = document.getElementById('continueTimer');
+    const endBtn = document.getElementById('endFocusBtn') || createEndFocusButton();
+    
+    if (startBtn) startBtn.disabled = true;
+    if (pauseBtn) pauseBtn.disabled = false;
+    if (continueBtn) continueBtn.style.display = 'none';
+    if (pauseBtn) pauseBtn.style.display = 'inline-flex';
+    if (endBtn) endBtn.disabled = false;
+}
+
+// ایجاد دکمه پایان فوکوس
+function createEndFocusButton() {
+    const timerActions = document.querySelector('.timer-actions');
+    if (!timerActions) return null;
+    
+    const endBtn = document.createElement('button');
+    endBtn.id = 'endFocusBtn';
+    endBtn.className = 'px-8 py-3 bg-red-500 text-white rounded-full hover:bg-red-600 transition-all font-bold shadow-lg hover:shadow-xl';
+    endBtn.innerHTML = '<i class="fas fa-stop ml-2"></i> پایان فوکوس';
+    endBtn.addEventListener('click', endFocusSession);
+    
+    timerActions.appendChild(endBtn);
+    return endBtn;
+}
+
+// ریست تایمر
+function resetTimer() {
+    clearInterval(appData.timerState.timerInterval);
+    
+    appData.timerState.isRunning = false;
+    appData.timerState.isPaused = false;
+    appData.timerState.timerInterval = null;
+    appData.timerState.elapsedSeconds = 0;
+    appData.timerState.startTime = null;
+    appData.timerState.pauseTime = null;
+    
+    const startBtn = document.getElementById('startTimer');
+    const pauseBtn = document.getElementById('pauseTimer');
+    const continueBtn = document.getElementById('continueTimer');
+    const endBtn = document.getElementById('endFocusBtn');
+    
+    if (startBtn) startBtn.disabled = false;
+    if (pauseBtn) {
+        pauseBtn.disabled = true;
+        pauseBtn.style.display = 'inline-flex';
+    }
+    if (continueBtn) continueBtn.style.display = 'none';
+    if (endBtn) endBtn.disabled = true;
+    
+    updateTimerDisplay();
+}
+
+// تغییر حالت فوکوس
+function changeFocusMode(mode) {
+    appData.timerState.mode = mode;
+    
+    // حذف active از همه دکمه‌ها
+    document.querySelectorAll('.focus-mode-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // اضافه کردن active به دکمه انتخاب شده
+    const activeBtn = document.getElementById(`focus${mode.charAt(0).toUpperCase() + mode.slice(1)}`);
+    if (activeBtn) activeBtn.classList.add('active');
+    
+    // تغییر عنوان
+    const modeTitles = {
+        normal: '🌱 حالت عادی',
+        pomodoro: '🍅 پومودورو',
+        challenge: '⚔️ چالش ویژه'
+    };
+    
+    const titleElement = document.getElementById('focusModeTitle');
+    if (titleElement) {
+        titleElement.textContent = modeTitles[mode] || 'حالت فوکوس';
+    }
+    
+    // تنظیم زمان‌ها فقط برای حالت‌های محدود
+    if (mode === 'pomodoro') {
+        appData.timerState.focusMinutes = 25;
+        appData.timerState.breakMinutes = 5;
+        document.getElementById('focusTime').value = 25;
+        document.getElementById('breakTime').value = 5;
+    } else if (mode === 'challenge') {
+        appData.timerState.focusMinutes = 15;
+        appData.timerState.breakMinutes = 3;
+        document.getElementById('focusTime').value = 15;
+        document.getElementById('breakTime').value = 3;
+    }
+    
+    resetTimer();
+}
+
+// تنظیم زمان‌ها فقط برای پومودورو و چالش
+function setFocusTime() {
+    if (appData.timerState.mode === 'normal') return;
+    
+    const focusTime = parseInt(document.getElementById('focusTime').value);
+    const breakTime = parseInt(document.getElementById('breakTime').value);
+    
+    if (focusTime >= 5 && focusTime <= 120) {
+        appData.timerState.focusMinutes = focusTime;
+    }
+    
+    if (breakTime >= 1 && breakTime <= 30) {
+        appData.timerState.breakMinutes = breakTime;
+    }
+    
+    resetTimer();
+}
+
+// مقداردهی اولیه
+function initializeFocusMode() {
+    // دکمه‌های حالت
+    document.getElementById('focusNormal')?.addEventListener('click', () => changeFocusMode('normal'));
+    document.getElementById('focusPomodoro')?.addEventListener('click', () => changeFocusMode('pomodoro'));
+    document.getElementById('focusChallenge')?.addEventListener('click', () => changeFocusMode('challenge'));
+    
+    // دکمه‌های تایمر
+    document.getElementById('startTimer')?.addEventListener('click', startTimer);
+    document.getElementById('pauseTimer')?.addEventListener('click', pauseTimer);
+    document.getElementById('continueTimer')?.addEventListener('click', continueTimer);
+    
+    // تنظیمات زمان فقط برای حالت‌های محدود
+    const focusTimeInput = document.getElementById('focusTime');
+    const breakTimeInput = document.getElementById('breakTime');
+    
+    if (focusTimeInput && breakTimeInput) {
+        focusTimeInput.addEventListener('change', setFocusTime);
+        breakTimeInput.addEventListener('change', setFocusTime);
+        
+        // غیرفعال کردن برای حالت عادی
+        if (appData.timerState.mode === 'normal') {
+            focusTimeInput.disabled = true;
+            breakTimeInput.disabled = true;
+        }
+    }
+    
+    // مقداردهی اولیه
+    changeFocusMode('normal');
+    
+    // بارگذاری داده‌های ذخیره شده
+    loadGameState();
+}
+
+// بارگذاری حالت بازی از localStorage
+function loadGameState() {
+    try {
+        const saved = localStorage.getItem('focusGameState');
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            // فقط برخی داده‌ها را بارگذاری کن
+            gameState.city.resources = parsed.city?.resources || gameState.city.resources;
+            gameState.city.buildings = parsed.city?.buildings || gameState.city.buildings;
+            gameState.weeklyProgress = parsed.weeklyProgress || gameState.weeklyProgress;
+            gameState.focusStats = parsed.focusStats || gameState.focusStats;
+        }
+    } catch (e) {
+        console.log('خطا در بارگذاری ذخیره‌ها:', e);
+    }
+}
+
+// ذخیره حالت بازی در localStorage
+function saveGameState() {
+    try {
+        localStorage.setItem('focusGameState', JSON.stringify(gameState));
+    } catch (e) {
+        console.log('خطا در ذخیره:', e);
+    }
+}
+
+// ذخیره خودکار هر ۳۰ ثانیه
+setInterval(saveGameState, 30000);
+
+// اجرای مقداردهی اولیه
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(() => {
+        initializeFocusMode();
+        renderFocusPage();
+    }, 100);
 });
