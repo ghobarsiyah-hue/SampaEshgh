@@ -39,7 +39,6 @@ let appData = {
         questionsCount: 0,
         approvedCount: 0
     },
-    // فیلترهای پیش‌فرض
     userFilters: {
         status: 'all',
         role: 'all',
@@ -49,44 +48,42 @@ let appData = {
         subject: 'all',
         status: 'all',
         search: '',
-        displayMode: 'compact' // حالت‌های نمایش: compact, full
+        displayMode: 'compact'
     },
-    focusData: {
-    focusScore: 0,
-    focusLevel: 1,
-    levelProgress: 0,
-    totalSessions: 0,
-    totalMinutes: 0,
-    timeRecord: 0,
-    todayScore: 0,
-    achievements: [],
-    unlockedItems: [],
-    currentStreak: 0,
-    bestStreak: 0
-},
-timerState: {
-    isRunning: false,
-    isPaused: false,
-    mode: 'normal', // normal, pomodoro, challenge
-    focusMinutes: 25,
-    breakMinutes: 5,
-    timeLeft: 1500, // 25 دقیقه به ثانیه
-    timerInterval: null,
-    sessionType: 'focus' // focus, break
-},
-achievements: [
-    { id: 1, name: "تازه‌کار فوکوس", description: "اولین جلسه فوکوس را کامل کن", points: 100, unlocked: false },
-    { id: 2, name: "تمرکز ۳۰ دقیقه‌ای", description: "یک جلسه ۳۰ دقیقه‌ای فوکوس کامل کن", points: 200, unlocked: false },
-    { id: 3, name: "پومودورو ماستر", description: "۵ جلسه پومودورو کامل کن", points: 300, unlocked: false },
-    { id: 4, name: "سری موفقیت‌ها", description: "۳ روز متوالی فوکوس کن", points: 400, unlocked: false },
-    { id: 5, name: "فوکوس یک ساعته", description: "یک جلسه ۶۰ دقیقه‌ای کامل کن", points: 500, unlocked: false }
-],
-unlockableItems: [
-    { id: 1, name: "تم طلایی", type: "theme", levelRequired: 3, unlocked: false },
-    { id: 2, name: "صدای اعلان ویژه", type: "sound", levelRequired: 5, unlocked: false },
-    { id: 3, name: "آیکون اختصاصی", type: "icon", levelRequired: 7, unlocked: false },
-    { id: 4, name: "عنوان افسانه‌ای", type: "title", levelRequired: 10, unlocked: false }
-]
+    // داده‌های جدید برای حالت فوکوس
+    focusSystem: {
+        dailyTotalSeconds: 0,
+        dailyTimerRunning: true,
+        dailyTimerInterval: null,
+        studyTimerRunning: false,
+        studyTimerInterval: null,
+        studyStartTime: null,
+        studyElapsedSeconds: 0,
+        pomodoroTimerRunning: false,
+        pomodoroInterval: null,
+        pomodoroState: 'focus',
+        pomodoroRemainingSeconds: 25 * 60,
+        pomodoroFocusMinutes: 25,
+        pomodoroBreakMinutes: 5,
+        pomodoroSessionsCompleted: 0,
+        applesCollected: 0,
+        applesStored: 0,
+        subjects: [
+            { id: 1, name: "ریاضی", color: "purple", totalHours: 12, todayHours: 2, weeklyHours: 12 },
+            { id: 2, name: "فیزیک", color: "emerald", totalHours: 8, todayHours: 1.5, weeklyHours: 8 },
+            { id: 3, name: "شیمی", color: "blue", totalHours: 6, todayHours: 1, weeklyHours: 6 }
+        ],
+        studyHistory: [],
+        weeklyData: [2, 3, 1.5, 2.5, 3, 2, 1.5],
+        totalStudyHours: 26,
+        streakDays: 7,
+        totalApples: 5,
+        activeSubjects: 3,
+        studyGoals: [
+            { id: 1, title: "اتمام فصل حسابان", subject: "ریاضی", deadline: "۱۴۰۲/۰۷/۱۵", completed: false },
+            { id: 2, title: "مطالعه ۵ ساعت فیزیک", subject: "فیزیک", deadline: "۱۴۰۲/۰۷/۱۰", completed: true }
+        ]
+    }
 };
 
 // داده‌های نمونه برای سوالات
@@ -140,6 +137,8 @@ let currentExamTime = "";
 // نمایش اعلان
 function showNotification(message, type) {
     const notification = document.getElementById('notification');
+    if (!notification) return;
+    
     notification.textContent = message;
     notification.className = 'notification';
     notification.classList.add(type);
@@ -185,14 +184,12 @@ document.getElementById('loginForm').addEventListener('submit', function(e) {
     );
     
     if (isAdmin) {
-        // ورود به عنوان ادمین
         document.getElementById('authPage').classList.add('hidden');
         document.getElementById('adminPanel').classList.remove('hidden');
         showNotification('خوش آمدید مدیر سیستم!', 'success');
         initializeAppData();
         renderAdminData();
     } else {
-        // ورود به عنوان کاربر عادی
         document.getElementById('authPage').classList.add('hidden');
         document.getElementById('userPanel').classList.remove('hidden');
         showNotification('خوش آمدید!', 'success');
@@ -203,17 +200,11 @@ document.getElementById('loginForm').addEventListener('submit', function(e) {
 
 // مقداردهی اولیه داده‌های برنامه
 function initializeAppData() {
-    // پر کردن dropdownهای موضوع
     populateSubjectDropdowns();
-    
-    // مقداردهی اولیه dropdownهای مبحث
     initializeChapterDropdowns();
-    
-    // بروزرسانی آمار سوالات
     updateQuestionsStatistics();
-    
-    // مقداردهی اولیه تنظیمات سیستم
     initializeSystemSettings();
+    initializeFocusMode();
 }
 
 // پر کردن dropdownهای موضوع در تمام فرم‌ها
@@ -226,12 +217,10 @@ function populateSubjectDropdowns() {
     subjectDropdowns.forEach(dropdownId => {
         const dropdown = document.getElementById(dropdownId);
         if (dropdown) {
-            // پاک کردن options فعلی (به جز اولین option)
             while (dropdown.options.length > 1) {
                 dropdown.remove(1);
             }
             
-            // اضافه کردن موضوعات
             appData.subjects.forEach(subject => {
                 const option = document.createElement('option');
                 option.value = subject;
@@ -257,14 +246,11 @@ function initializeChapterDropdowns() {
         const chapterDropdown = document.getElementById(pair.chapterId);
         
         if (subjectDropdown && chapterDropdown) {
-            // مقداردهی اولیه بر اساس موضوع پیش‌فرض
             updateChapterOptions(subjectDropdown.value, pair.chapterId);
             
-            // اضافه کردن event listener برای تغییر موضوع
             subjectDropdown.addEventListener('change', function() {
                 updateChapterOptions(this.value, pair.chapterId);
                 
-                // بروزرسانی تعداد سوالات موجود در صورت لزوم
                 if (pair.subjectId === 'examSubject') {
                     updateAvailableQuestionsCount();
                 }
@@ -285,12 +271,10 @@ function updateChapterOptions(subject, chapterSelectId) {
     
     if (!chapterSelect) return;
     
-    // پاک کردن options فعلی (به جز اولین option)
     while (chapterSelect.options.length > 1) {
         chapterSelect.remove(1);
     }
     
-    // اضافه کردن مباحث مربوط به موضوع انتخاب شده
     if (subject && appData.subjectChapters[subject]) {
         appData.subjectChapters[subject].forEach(chapter => {
             const option = document.createElement('option');
@@ -314,27 +298,21 @@ document.querySelectorAll('#adminPanel [data-page]').forEach(item => {
     item.addEventListener('click', function(e) {
         e.preventDefault();
         
-        // حذف کلاس active از همه آیتم‌ها
         document.querySelectorAll('#adminPanel .sidebar-item').forEach(i => {
             i.classList.remove('active');
         });
         
-        // اضافه کردن کلاس active به آیتم انتخاب شده
         this.classList.add('active');
         
-        // مخفی کردن همه صفحات
         document.querySelectorAll('#adminPanel > div > main > div').forEach(div => {
             div.classList.add('hidden');
         });
         
-        // نمایش صفحه انتخاب شده
         const pageId = this.getAttribute('data-page');
         document.getElementById(pageId).classList.remove('hidden');
         
-        // به روز رسانی عنوان صفحه
         document.getElementById('adminPageTitle').textContent = this.querySelector('span').textContent;
         
-        // بستن منو در حالت موبایل
         if (window.innerWidth < 768) {
             document.querySelector('#adminPanel .sidebar').classList.remove('open');
             document.querySelector('#adminPanel .main-content').classList.remove('sidebar-open');
@@ -347,27 +325,21 @@ document.querySelectorAll('#userPanel [data-page]').forEach(item => {
     item.addEventListener('click', function(e) {
         e.preventDefault();
         
-        // حذف کلاس active از همه آیتم‌ها
         document.querySelectorAll('#userPanel .sidebar-item').forEach(i => {
             i.classList.remove('active');
         });
         
-        // اضافه کردن کلاس active به آیتم انتخاب شده
         this.classList.add('active');
         
-        // مخفی کردن همه صفحات
         document.querySelectorAll('#userPanel > div > main > div').forEach(div => {
             div.classList.add('hidden');
         });
         
-        // نمایش صفحه انتخاب شده
         const pageId = this.getAttribute('data-page');
         document.getElementById(pageId).classList.remove('hidden');
         
-        // به روز رسانی عنوان صفحه
         document.getElementById('userPageTitle').textContent = this.querySelector('span').textContent;
         
-        // بستن منو در حالت موبایل
         if (window.innerWidth < 768) {
             document.querySelector('#userPanel .sidebar').classList.remove('open');
             document.querySelector('#userPanel .main-content').classList.remove('sidebar-open');
@@ -492,7 +464,6 @@ document.getElementById('adminAddQuestionForm').addEventListener('submit', funct
         status: "approved"
     };
     
-    // اضافه کردن سوال به بانک سوالات
     sampleQuestions.push(newQuestion);
     appData.adminQuestions.unshift(newQuestion);
     
@@ -603,25 +574,18 @@ document.getElementById('adminQuestionLevel').addEventListener('change', updateA
 
 // رندر داده‌های ادمین
 function renderAdminData() {
-    // به روزرسانی زمان‌های فعالیت اخیر
     updateRecentActivities();
-    
-    // رندر کاربران
     renderUsersTable();
-    
-    // رندر سوالات
     renderQuestionsTable();
-    
-    // رندر موضوعات
     renderSubjectsList();
 }
 
 // به روزرسانی فعالیت‌های اخیر با زمان واقعی
 function updateRecentActivities() {
     const now = new Date();
-    const timeAgo1 = new Date(now.getTime() - 2 * 60 * 60 * 1000); // 2 ساعت پیش
-    const timeAgo2 = new Date(now.getTime() - 30 * 60 * 1000); // 30 دقیقه پیش
-    const timeAgo3 = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 1 روز پیش
+    const timeAgo1 = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+    const timeAgo2 = new Date(now.getTime() - 30 * 60 * 1000);
+    const timeAgo3 = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     
     document.getElementById('recentActivity1').textContent = formatTimeAgo(timeAgo1);
     document.getElementById('recentActivity2').textContent = formatTimeAgo(timeAgo2);
@@ -645,9 +609,10 @@ function formatTimeAgo(date) {
 // رندر جدول کاربران
 function renderUsersTable() {
     const usersTable = document.getElementById('adminUsersTable');
+    if (!usersTable) return;
+    
     usersTable.innerHTML = '';
     
-    // اعمال فیلترها
     const filteredUsers = appData.users.filter(user => {
         const matchesStatus = appData.userFilters.status === 'all' || user.status === appData.userFilters.status;
         const matchesRole = appData.userFilters.role === 'all' || user.role === appData.userFilters.role;
@@ -698,7 +663,6 @@ function renderUsersTable() {
         usersTable.appendChild(row);
     });
     
-    // اضافه کردن event listener برای دکمه‌های کاربران
     document.querySelectorAll('.edit-user').forEach(button => {
         button.addEventListener('click', function() {
             const userId = parseInt(this.getAttribute('data-id'));
@@ -724,9 +688,10 @@ function renderUsersTable() {
 // رندر جدول سوالات
 function renderQuestionsTable() {
     const questionsTable = document.getElementById('adminQuestionsTable');
+    if (!questionsTable) return;
+    
     questionsTable.innerHTML = '';
     
-    // اعمال فیلترها
     const filteredQuestions = appData.adminQuestions.filter(question => {
         const matchesSubject = appData.questionFilters.subject === 'all' || question.subject === appData.questionFilters.subject;
         const matchesStatus = appData.questionFilters.status === 'all' || question.status === appData.questionFilters.status;
@@ -758,7 +723,6 @@ function renderQuestionsTable() {
         row.className = 'hover:bg-blue-50 transition-colors';
         
         if (appData.questionFilters.displayMode === 'full') {
-            // حالت نمایش کامل
             row.innerHTML = `
                 <td class="px-6 py-4 text-sm text-blue-900">
                     <div class="font-semibold mb-2">${question.text}</div>
@@ -787,7 +751,6 @@ function renderQuestionsTable() {
                 </td>
             `;
         } else {
-            // حالت نمایش فشرده (پیش‌فرض)
             row.innerHTML = `
                 <td class="px-6 py-4 text-sm text-blue-900">${question.text}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-900">${question.user}</td>
@@ -809,7 +772,6 @@ function renderQuestionsTable() {
         questionsTable.appendChild(row);
     });
     
-    // اضافه کردن event listener برای دکمه‌های سوالات
     document.querySelectorAll('.edit-question').forEach(button => {
         button.addEventListener('click', function() {
             const questionId = parseInt(this.getAttribute('data-id'));
@@ -842,6 +804,8 @@ function renderQuestionsTable() {
 // رندر لیست موضوعات
 function renderSubjectsList() {
     const subjectsList = document.getElementById('subjectsList');
+    if (!subjectsList) return;
+    
     subjectsList.innerHTML = '';
     
     appData.subjects.forEach(subject => {
@@ -857,7 +821,6 @@ function renderSubjectsList() {
         subjectsList.appendChild(subjectElement);
     });
     
-    // اضافه کردن event listener برای دکمه‌های موضوعات
     document.querySelectorAll('.edit-subject').forEach(button => {
         button.addEventListener('click', function() {
             const subject = this.getAttribute('data-subject');
@@ -875,109 +838,108 @@ function renderSubjectsList() {
 
 // رندر داده‌های کاربر
 function renderUserData() {
-    // به روز رسانی آمار کاربر
     document.getElementById('userQuestionsCount').textContent = appData.currentUser.questionsCount;
     document.getElementById('userApprovedCount').textContent = appData.currentUser.approvedCount;
     document.getElementById('userTotalScore').textContent = appData.currentUser.totalScore;
     document.getElementById('monthlyScoreValue').textContent = appData.currentUser.monthlyScore;
     
-    // محاسبه پیشرفت ماهانه
     const progressPercent = Math.min(100, (appData.currentUser.monthlyScore / 1000) * 100);
     document.getElementById('monthlyProgress').style.width = `${progressPercent}%`;
     
-    // رندر سوالات کاربر
     const userQuestionsTable = document.getElementById('userQuestionsTable');
-    userQuestionsTable.innerHTML = '';
-    
-    if (appData.userQuestions.length === 0) {
-        userQuestionsTable.innerHTML = `
-            <tr>
-                <td colspan="7" class="px-6 py-4 text-center text-blue-500">
-                    <i class="fas fa-inbox text-4xl mb-2 block"></i>
-                    <p>هنوز سوالی ارسال نکرده‌اید</p>
-                    <button class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 btn-hover" onclick="switchToPage('addQuestion')">
-                        اولین سوال خود را ارسال کنید
-                    </button>
-                </td>
-            </tr>
-        `;
-    } else {
-        appData.userQuestions.forEach(question => {
-            const statusText = question.status === 'approved' ? 'تایید شده' : question.status === 'pending' ? 'در انتظار' : 'رد شده';
-            const statusClass = question.status === 'approved' ? 'bg-green-100 text-green-800' : 
-                              question.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
-            
-            const row = document.createElement('tr');
-            row.className = 'hover:bg-blue-50 transition-colors';
-            row.innerHTML = `
-                <td class="px-6 py-4 text-sm text-blue-900">${question.text}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-900">${question.subject}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-900">${question.chapter}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-900">${question.level}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-900">${question.score}</td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${statusText}</span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button class="text-blue-600 hover:text-blue-900 ml-4 edit-user-question" data-id="${question.id}"><i class="fas fa-edit"></i></button>
-                    <button class="text-red-600 hover:text-red-900 delete-user-question" data-id="${question.id}"><i class="fas fa-trash"></i></button>
-                </td>
+    if (userQuestionsTable) {
+        userQuestionsTable.innerHTML = '';
+        
+        if (appData.userQuestions.length === 0) {
+            userQuestionsTable.innerHTML = `
+                <tr>
+                    <td colspan="7" class="px-6 py-4 text-center text-blue-500">
+                        <i class="fas fa-inbox text-4xl mb-2 block"></i>
+                        <p>هنوز سوالی ارسال نکرده‌اید</p>
+                        <button class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 btn-hover" onclick="switchToPage('addQuestion')">
+                            اولین سوال خود را ارسال کنید
+                        </button>
+                    </td>
+                </tr>
             `;
-            userQuestionsTable.appendChild(row);
-        });
-        
-        // اضافه کردن event listener برای دکمه‌های سوالات کاربر
-        document.querySelectorAll('.edit-user-question').forEach(button => {
-            button.addEventListener('click', function() {
-                const questionId = parseInt(this.getAttribute('data-id'));
-                openEditQuestionModal(questionId, true);
+        } else {
+            appData.userQuestions.forEach(question => {
+                const statusText = question.status === 'approved' ? 'تایید شده' : question.status === 'pending' ? 'در انتظار' : 'رد شده';
+                const statusClass = question.status === 'approved' ? 'bg-green-100 text-green-800' : 
+                                  question.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
+                
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-blue-50 transition-colors';
+                row.innerHTML = `
+                    <td class="px-6 py-4 text-sm text-blue-900">${question.text}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-900">${question.subject}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-900">${question.chapter}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-900">${question.level}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-900">${question.score}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">${statusText}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button class="text-blue-600 hover:text-blue-900 ml-4 edit-user-question" data-id="${question.id}"><i class="fas fa-edit"></i></button>
+                        <button class="text-red-600 hover:text-red-900 delete-user-question" data-id="${question.id}"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+                userQuestionsTable.appendChild(row);
             });
-        });
-        
-        document.querySelectorAll('.delete-user-question').forEach(button => {
-            button.addEventListener('click', function() {
-                const questionId = parseInt(this.getAttribute('data-id'));
-                deleteUserQuestion(questionId);
+            
+            document.querySelectorAll('.edit-user-question').forEach(button => {
+                button.addEventListener('click', function() {
+                    const questionId = parseInt(this.getAttribute('data-id'));
+                    openEditQuestionModal(questionId, true);
+                });
             });
-        });
+            
+            document.querySelectorAll('.delete-user-question').forEach(button => {
+                button.addEventListener('click', function() {
+                    const questionId = parseInt(this.getAttribute('data-id'));
+                    deleteUserQuestion(questionId);
+                });
+            });
+        }
     }
     
-    // رندر امتیازات کاربر
     const userScoresTable = document.getElementById('userScoresTable');
-    userScoresTable.innerHTML = '';
-    
-    if (appData.userScores.length === 0) {
-        userScoresTable.innerHTML = `
-            <tr>
-                <td colspan="4" class="px-6 py-4 text-center text-blue-500">
-                    <i class="fas fa-chart-line text-4xl mb-2 block"></i>
-                    <p>هنوز امتیازی کسب نکرده‌اید</p>
-                    <p class="text-sm mt-2">با ارسال سوالات باکیفیت امتیاز کسب کنید</p>
-                </td>
-            </tr>
-        `;
-    } else {
-        appData.userScores.forEach(score => {
-            const row = document.createElement('tr');
-            row.className = 'hover:bg-blue-50 transition-colors';
-            row.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-900">${score.date}</td>
-                <td class="px-6 py-4 text-sm text-blue-900">${score.question}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-900">${score.points}</td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">تایید شده</span>
-                </td>
+    if (userScoresTable) {
+        userScoresTable.innerHTML = '';
+        
+        if (appData.userScores.length === 0) {
+            userScoresTable.innerHTML = `
+                <tr>
+                    <td colspan="4" class="px-6 py-4 text-center text-blue-500">
+                        <i class="fas fa-chart-line text-4xl mb-2 block"></i>
+                        <p>هنوز امتیازی کسب نکرده‌اید</p>
+                        <p class="text-sm mt-2">با ارسال سوالات باکیفیت امتیاز کسب کنید</p>
+                    </td>
+                </tr>
             `;
-            userScoresTable.appendChild(row);
-        });
+        } else {
+            appData.userScores.forEach(score => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-blue-50 transition-colors';
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-900">${score.date}</td>
+                    <td class="px-6 py-4 text-sm text-blue-900">${score.question}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-900">${score.points}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">تایید شده</span>
+                    </td>
+                `;
+                userScoresTable.appendChild(row);
+            });
+        }
     }
 }
-
-// ==================== تغییرات جدید ====================
 
 // رندر لیست موضوعات در تنظیمات سیستم
 function renderTopicsList() {
     const topicsList = document.getElementById('topicsList');
+    if (!topicsList) return;
+    
     topicsList.innerHTML = '';
     
     appData.topics.forEach(topic => {
@@ -1000,7 +962,6 @@ function renderTopicsList() {
         topicsList.appendChild(topicElement);
     });
     
-    // اضافه کردن event listener برای دکمه‌های موضوعات
     document.querySelectorAll('.edit-topic').forEach(button => {
         button.addEventListener('click', function() {
             const topicId = parseInt(this.getAttribute('data-id'));
@@ -1019,6 +980,8 @@ function renderTopicsList() {
 // رندر مدیریت مباحث درسی
 function renderSubjectsManagement() {
     const subjectsManagement = document.getElementById('subjectsManagement');
+    if (!subjectsManagement) return;
+    
     subjectsManagement.innerHTML = '';
     
     Object.keys(appData.subjectChapters).forEach(subject => {
@@ -1055,7 +1018,6 @@ function renderSubjectsManagement() {
         subjectsManagement.appendChild(subjectElement);
     });
     
-    // اضافه کردن event listener برای دکمه‌ها
     document.querySelectorAll('.add-chapter').forEach(button => {
         button.addEventListener('click', function() {
             const subject = this.getAttribute('data-subject');
@@ -1187,7 +1149,7 @@ document.getElementById('addChapterForm').addEventListener('submit', function(e)
     showNotification('مبحث با موفقیت اضافه شد', 'success');
     closeAddChapterModal();
     renderSubjectsManagement();
-    initializeChapterDropdowns(); // بروزرسانی dropdownها
+    initializeChapterDropdowns();
 });
 
 // باز کردن مودال ویرایش مبحث
@@ -1215,13 +1177,12 @@ document.getElementById('editChapterForm').addEventListener('submit', function(e
     if (chapterIndex !== -1) {
         appData.subjectChapters[subject][chapterIndex] = newChapterName;
         
-        // به‌روزرسانی سوالات مربوطه
         updateQuestionsChapter(subject, oldChapterName, newChapterName);
         
         showNotification('مبحث با موفقیت ویرایش شد', 'success');
         closeEditChapterModal();
         renderSubjectsManagement();
-        initializeChapterDropdowns(); // بروزرسانی dropdownها
+        initializeChapterDropdowns();
     }
 });
 
@@ -1252,7 +1213,7 @@ function deleteChapter(subject, chapter) {
         appData.subjectChapters[subject] = appData.subjectChapters[subject].filter(c => c !== chapter);
         showNotification('مبحث با موفقیت حذف شد', 'success');
         renderSubjectsManagement();
-        initializeChapterDropdowns(); // بروزرسانی dropdownها
+        initializeChapterDropdowns();
     }
 }
 
@@ -1328,8 +1289,6 @@ function toggleQuestionDisplayMode() {
     renderQuestionsTable();
 }
 
-// ==================== event listenerهای جدید ====================
-
 // event listener برای دکمه‌های تنظیمات سیستم
 document.getElementById('addTopicBtn').addEventListener('click', openAddTopicModal);
 document.getElementById('closeAddTopicModal').addEventListener('click', closeAddTopicModal);
@@ -1356,16 +1315,24 @@ function switchToPage(pageId) {
         i.classList.remove('active');
     });
     
-    document.querySelector(`#userPanel [data-page="${pageId}"]`).classList.add('active');
+    const pageLink = document.querySelector(`#userPanel [data-page="${pageId}"]`);
+    if (pageLink) {
+        pageLink.classList.add('active');
+    }
     
     document.querySelectorAll('#userPanel > div > main > div').forEach(div => {
         div.classList.add('hidden');
     });
     
-    document.getElementById(pageId).classList.remove('hidden');
+    const pageElement = document.getElementById(pageId);
+    if (pageElement) {
+        pageElement.classList.remove('hidden');
+    }
     
-    document.getElementById('userPageTitle').textContent = 
-        document.querySelector(`#userPanel [data-page="${pageId}"] span`).textContent;
+    const pageTitle = document.getElementById('userPageTitle');
+    if (pageTitle && pageLink) {
+        pageTitle.textContent = pageLink.querySelector('span').textContent;
+    }
 }
 
 // باز کردن مودال ویرایش سوال
@@ -1389,7 +1356,6 @@ function openEditQuestionModal(questionId, isUserQuestion = false) {
         document.getElementById('editNeedImage').checked = question.hasImage || false;
         document.getElementById('editScoreValue').textContent = question.score || 15;
         
-        // بروزرسانی مباحث بر اساس موضوع انتخاب شده
         updateChapterOptions(question.subject, 'editQuestionChapter');
         
         document.getElementById('editQuestionModal').classList.add('open');
@@ -1425,7 +1391,6 @@ document.getElementById('editQuestionForm').addEventListener('submit', function(
     const detailedAnswer = document.getElementById('editDetailedAnswer').value;
     const hasImage = document.getElementById('editNeedImage').checked;
     
-    // پیدا کردن سوال در هر دو لیست و به روز رسانی آن
     let question = appData.userQuestions.find(q => q.id === questionId);
     if (question) {
         question.subject = subject;
@@ -1452,7 +1417,6 @@ document.getElementById('editQuestionForm').addEventListener('submit', function(
         question.hasImage = hasImage;
     }
     
-    // به‌روزرسانی سوال در لیست adminQuestions
     const adminQuestion = appData.adminQuestions.find(q => q.id === questionId);
     if (adminQuestion) {
         adminQuestion.subject = subject;
@@ -1462,7 +1426,6 @@ document.getElementById('editQuestionForm').addEventListener('submit', function(
     showNotification('سوال با موفقیت ویرایش شد', 'success');
     document.getElementById('editQuestionModal').classList.remove('open');
     
-    // به روز رسانی نمایش
     renderAdminData();
     renderUserData();
     updateQuestionsStatistics();
@@ -1497,10 +1460,7 @@ function updateQuestionStatus(questionId, status) {
         showNotification(`وضعیت سوال به ${status === 'approved' ? 'تایید شده' : 'رد شده'} تغییر کرد`, 'success');
         renderAdminData();
         
-        // اگر سوال تایید شد، به امتیازات کاربر اضافه شود
         if (status === 'approved') {
-            // در اینجا باید کاربر مربوطه پیدا شود و امتیاز به او اضافه گردد
-            // برای سادگی، فقط یک پیام نمایش می‌دهیم
             showNotification('امتیاز سوال به کاربر مربوطه اضافه شد', 'success');
         }
     }
@@ -1530,8 +1490,11 @@ function updateAvailableQuestionsCount() {
                (!level || q.level === level);
     });
 
-    document.getElementById('availableQuestions').textContent = 
-        `${filteredQuestions.length} سوال پیدا شد`;
+    const availableQuestionsElement = document.getElementById('availableQuestions');
+    if (availableQuestionsElement) {
+        availableQuestionsElement.textContent = 
+            `${filteredQuestions.length} سوال پیدا شد`;
+    }
 }
 
 // پیش‌نمایش آزمون
@@ -1543,17 +1506,14 @@ document.getElementById('previewExam').addEventListener('click', function() {
     const title = document.getElementById('examTitle').value || "آزمون نمونه";
     const time = document.getElementById('examTime').value;
 
-    // فیلتر کردن سوالات
     let filteredQuestions = sampleQuestions.filter(q => {
         return (!subject || q.subject === subject) &&
                (!chapter || q.chapter === chapter) &&
                (!level || q.level === level);
     });
 
-    // انتخاب سوالات به صورت تصادفی
     filteredQuestions = shuffleArray(filteredQuestions).slice(0, count);
 
-    // تولید پیش‌نمایش
     generateExamPreview(filteredQuestions, title, time);
     document.getElementById('examPreview').classList.remove('hidden');
 });
@@ -1571,8 +1531,8 @@ function shuffleArray(array) {
 // تولید پیش‌نمایش آزمون
 function generateExamPreview(questions, title, time) {
     const previewContent = document.getElementById('previewContent');
+    if (!previewContent) return;
     
-    // تابع تبدیل اعداد به فارسی
     const toPersianNumbers = (num) => {
         const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
         return num.toString().replace(/\d/g, (digit) => persianDigits[parseInt(digit)]);
@@ -1602,7 +1562,6 @@ function generateExamPreview(questions, title, time) {
     `;
 
     questions.forEach((question, index) => {
-        // تابع اصلاح ریاضی برای نمایش صحیح فرمول‌ها
         const fixMath = (text) => {
             if (!text) return "";
             return text.replace(
@@ -1670,7 +1629,6 @@ function generateExamPreview(questions, title, time) {
     
     previewContent.innerHTML = html;
     
-    // ذخیره سوالات برای استفاده در PDF
     currentExamQuestions = questions;
     currentExamTitle = title;
     currentExamTime = time;
@@ -1720,7 +1678,6 @@ function generatePDF() {
             position: "relative",
         });
 
-        // تابع تبدیل اعداد به فارسی
         const toPersianNumbers = (num) => {
             const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
             return num.toString().replace(/\d/g, (digit) => persianDigits[parseInt(digit)]);
@@ -1747,7 +1704,6 @@ function generatePDF() {
         `;
         mainBox.appendChild(headerBox);
 
-        // تابع اصلاح ریاضی
         const fixMath = (text) => {
             if (!text) return "";
             return text.replace(
@@ -1815,7 +1771,6 @@ function generatePDF() {
                 qBox.appendChild(optionsDiv);
             }
 
-            // منبع با فرمت صحیح
             if (q.institution) {
                 const src = document.createElement("p");
                 Object.assign(src.style, {
@@ -1835,7 +1790,6 @@ function generatePDF() {
 
         mainBox.appendChild(questionContainer);
 
-        // فوتر پایین صفحه
         const footerBox = document.createElement("div");
         Object.assign(footerBox.style, {
             width: "100%",
@@ -1963,34 +1917,29 @@ function deleteUser(userId) {
 function editSubject(subject) {
     const newSubject = prompt('نام جدید موضوع را وارد کنید:', subject);
     if (newSubject && newSubject.trim() !== '') {
-        // به‌روزرسانی موضوع در لیست موضوعات
         const index = appData.subjects.indexOf(subject);
         if (index !== -1) {
             appData.subjects[index] = newSubject.trim();
         }
         
-        // به‌روزرسانی موضوع در سوالات
         sampleQuestions.forEach(q => {
             if (q.subject === subject) {
                 q.subject = newSubject.trim();
             }
         });
         
-        // به‌روزرسانی موضوع در سوالات کاربر
         appData.userQuestions.forEach(q => {
             if (q.subject === subject) {
                 q.subject = newSubject.trim();
             }
         });
         
-        // به‌روزرسانی موضوع در سوالات ادمین
         appData.adminQuestions.forEach(q => {
             if (q.subject === subject) {
                 q.subject = newSubject.trim();
             }
         });
         
-        // به‌روزرسانی dropdownها
         populateSubjectDropdowns();
         
         showNotification('موضوع با موفقیت ویرایش شد', 'success');
@@ -2005,12 +1954,10 @@ function deleteSubject(subject) {
         appData.subjects = appData.subjects.filter(s => s !== subject);
         delete appData.subjectChapters[subject];
         
-        // حذف سوالات مربوط به این موضوع
         sampleQuestions = sampleQuestions.filter(q => q.subject !== subject);
         appData.userQuestions = appData.userQuestions.filter(q => q.subject !== subject);
         appData.adminQuestions = appData.adminQuestions.filter(q => q.subject !== subject);
         
-        // به‌روزرسانی dropdownها
         populateSubjectDropdowns();
         
         showNotification('موضوع با موفقیت حذف شد', 'success');
@@ -2022,7 +1969,6 @@ function deleteSubject(subject) {
 
 // مقداردهی اولیه هنگام لود صفحه
 document.addEventListener('DOMContentLoaded', function() {
-    // event listener برای فیلترهای آزمون
     ['examSubject', 'examChapter', 'examLevel'].forEach(id => {
         const element = document.getElementById(id);
         if (element) {
@@ -2030,1493 +1976,1339 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // اضافه کردن event listener برای دکمه ذخیره تنظیمات
     const saveSettingsBtn = document.querySelector('#systemSettings button');
     if (saveSettingsBtn) {
         saveSettingsBtn.addEventListener('click', function() {
             showNotification('تنظیمات با موفقیت ذخیره شد', 'success');
         });
     }
+
+    initializeFocusMode();
 });
-// ==================== سیستم فوکوس بازی‌گونه - نسخه تمیز ====================
+// ==================== FOCUS MODE SYSTEM - کاملاً بازنویسی شده ====================
+let focusTimerHandler = null;
+let studyTimerHandler = null;
+let pomodoroTimerHandler = null;
 
-// داده‌های اصلی بازی
-let gameState = {
-    // سیستم شهرسازی
-    city: {
-        name: "شهر تمرکز",
-        level: 1,
-        population: 1,
-        happiness: 50,
-        buildings: [],
-        resources: {
-            wood: 100,
-            stone: 50,
-            gold: 0,
-            knowledge: 0
-        },
-        productionRates: {
-            wood: 1,    // هر 30 ثانیه 1 چوب
-            stone: 0.5, // هر 30 ثانیه 0.5 سنگ
-            gold: 0,    // از ساختمان‌ها
-            knowledge: 2 // هر دقیقه 2 دانش
+// ==================== FUNCTIONS ====================
+
+function initializeFocusMode() {
+    console.log("📚 Initializing Focus Mode...");
+    
+    try {
+        loadFocusData();
+        setupFocusEventListeners();
+        updateAllDisplays();
+        
+        // 1. حذف دکمه شروع تایمر روزانه
+        const startDailyBtn = document.getElementById('startDailyTimerBtn');
+        if (startDailyBtn) {
+            startDailyBtn.style.display = 'none';
         }
-    },
-    
-    // سیستم تحقیق
-    technologies: [],
-    researching: null,
-    researchProgress: 0,
-    researchTimeLeft: 0,
-    
-    // مأموریت‌های فعال
-    activeMissions: [],
-    completedMissions: [],
-    missionProgress: {},
-    
-    // چالش فعال
-    activeChallenge: null,
-    challengeProgress: 0,
-    challengeStreak: 0,
-    
-    // نمودار هفتگی
-    weeklyProgress: {
-        days: [0, 0, 0, 0, 0, 0, 0], // شنبه تا جمعه
-        currentDayIndex: new Date().getDay() === 6 ? 0 : new Date().getDay() + 1,
-        lastUpdate: Date.now()
-    },
-    
-    // آمار فوکوس
-    focusStats: {
-        totalSeconds: 0,
-        todaySeconds: 0,
-        currentStreak: 0,
-        bestStreak: 0,
-        lastSession: null
+        
+        // 2. مخفی کردن کنترل‌های تایمر اضافی
+        const timerControls = document.querySelector('.timer-controls');
+        if (timerControls) {
+            timerControls.style.display = 'none';
+        }
+        
+        console.log("✅ Focus Mode Initialized Successfully");
+    } catch (error) {
+        console.error("❌ Error initializing Focus Mode:", error);
     }
-};
-
-// ساختمان‌های قابل ساخت
-const buildings = [
-    {
-        id: 1,
-        name: "نهالستان",
-        type: "tree",
-        description: "درختان سریع‌تر رشد می‌کنند",
-        cost: { wood: 50 },
-        buildTime: 60,
-        effect: "افزایش 50% تولید چوب",
-        level: 1,
-        maxLevel: 5,
-        production: { wood: 5 },
-        sprite: "🌱",
-        category: "production"
-    },
-    {
-        id: 2,
-        name: "معدن سنگ",
-        type: "mine",
-        description: "استخراج سنگ از معادن",
-        cost: { wood: 30, stone: 20 },
-        buildTime: 90,
-        effect: "تولید سنگ فعال می‌شود",
-        level: 1,
-        maxLevel: 3,
-        production: { stone: 3 },
-        sprite: "⛏️",
-        category: "production"
-    },
-    {
-        id: 3,
-        name: "کارگاه",
-        type: "workshop",
-        description: "تبدیل منابع به طلا",
-        cost: { wood: 100, stone: 50 },
-        buildTime: 120,
-        effect: "هر 60 ثانیه 1 طلا تولید می‌کند",
-        level: 1,
-        maxLevel: 4,
-        production: { gold: 1 },
-        sprite: "🏠",
-        category: "production"
-    },
-    {
-        id: 4,
-        name: "کتابخانه",
-        type: "research",
-        description: "افزایش تولید دانش",
-        cost: { wood: 150, stone: 80 },
-        buildTime: 180,
-        effect: "افزایش 100% تولید دانش",
-        level: 1,
-        maxLevel: 3,
-        production: { knowledge: 5 },
-        sprite: "📚",
-        category: "knowledge"
-    }
-];
-
-// تکنولوژی‌های قابل تحقیق
-const technologies = [
-    {
-        id: 1,
-        name: "آبیاری پیشرفته",
-        description: "سیستم آبیاری اتوماتیک",
-        cost: { knowledge: 50 },
-        researchTime: 300, // 5 دقیقه
-        effect: "افزایش 25% تولید کلی",
-        prerequisites: [],
-        sprite: "💧",
-        unlocked: false
-    },
-    {
-        id: 2,
-        name: "مکانیزاسیون",
-        description: "استفاده از ماشین‌آلات",
-        cost: { knowledge: 100 },
-        researchTime: 600, // 10 دقیقه
-        effect: "کاهش 30% زمان ساخت",
-        prerequisites: [1],
-        sprite: "⚙️",
-        unlocked: false
-    }
-];
-
-// مأموریت‌های روزانه
-const dailyMissions = [
-    {
-        id: 1,
-        title: "تمرکز ۱۵ دقیقه‌ای",
-        description: "یک جلسه ۱۵ دقیقه‌ای فوکوس کامل کن",
-        type: "focus",
-        target: 900, // ثانیه
-        reward: { wood: 50, stone: 25 },
-        repeatable: true
-    },
-    {
-        id: 2,
-        title: "ساخت نهالستان",
-        description: "اولین ساختمان خود را بساز",
-        type: "build",
-        target: 1, // ساختمان ID 1
-        reward: { wood: 100, stone: 50 },
-        repeatable: false
-    },
-    {
-        id: 3,
-        title: "تحقیق تکنولوژی",
-        description: "یک تکنولوژی جدید را کشف کن",
-        type: "research",
-        target: 1,
-        reward: { knowledge: 100, gold: 10 },
-        repeatable: true
-    }
-];
-
-// چالش‌های ویژه
-const challenges = [
-    {
-        id: 1,
-        title: "تمرکز ۱ ساعته",
-        description: "۶۰ دقیقه تمرکز بدون وقفه",
-        target: 3600, // ثانیه
-        reward: { gold: 100, knowledge: 200 },
-        streakBonus: 50,
-        active: false
-    }
-];
-
-// ==================== توابع اصلی ====================
-
-// رندر صفحه فوکوس
-function renderFocusPage() {
-    if (!document.getElementById('focusScore')) return;
-    
-    // آپدیت امتیازات
-    updateStatsDisplay();
-    
-    // رندر اجزای مختلف
-    renderCityView();
-    renderResourcesPanel();
-    renderBuildingsPanel();
-    renderTechnologiesPanel();
-    renderMissionsPanel();
-    renderWeeklyChart();
-    
-    // آپدیت تایمر
-    updateTimerDisplay();
 }
 
-// آپدیت نمایش آمار
-function updateStatsDisplay() {
-    document.getElementById('focusScore').textContent = appData.focusData.focusScore;
-    document.getElementById('focusLevel').textContent = appData.focusData.focusLevel;
-    document.getElementById('levelProgress').textContent = `${appData.focusData.levelProgress}/100`;
-    document.getElementById('levelProgressBar').style.width = `${appData.focusData.levelProgress}%`;
-    document.getElementById('totalSessions').textContent = appData.focusData.totalSessions;
-    document.getElementById('totalMinutes').textContent = Math.floor(gameState.focusStats.totalSeconds / 60);
-    document.getElementById('timeRecord').textContent = Math.floor(gameState.focusStats.bestStreak / 60);
-    document.getElementById('todayScore').textContent = Math.floor(gameState.focusStats.todaySeconds / 60);
-}
+// ==================== DATA MANAGEMENT ====================
 
-// رندر نمای شهر
-function renderCityView() {
-    const gameContainer = document.getElementById('gameScene');
-    if (!gameContainer) return;
-    
-    let cityHTML = `
-        <div class="text-center">
-            <h4 class="text-lg font-bold text-blue-800 mb-4">🏙️ ${gameState.city.name}</h4>
+function loadFocusData() {
+    try {
+        const saved = localStorage.getItem('focusSystemData');
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            const today = new Date().toDateString();
             
-            <div class="relative mx-auto mb-6 p-4 bg-gradient-to-b from-blue-50 to-green-50 rounded-2xl border-2 border-blue-200" 
-                 style="min-height: 300px; max-width: 600px; margin: 0 auto;">
+            if (parsed.lastSavedDate !== today) {
+                // ریست داده‌های روزانه برای روز جدید
+                appData.focusSystem.dailyTotalSeconds = 0;
+                appData.focusSystem.applesCollected = 0;
+                appData.focusSystem.studyHistory = parsed.studyHistory || [];
                 
-                <!-- زمین -->
-                <div class="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-green-500 to-emerald-600 rounded-b-2xl"></div>
-                
-                <!-- ساختمان‌ها -->
-                <div class="relative grid grid-cols-2 md:grid-cols-3 gap-4 p-4 mt-8">
-    `;
-    
-    // نمایش ساختمان‌های ساخته شده
-    gameState.city.buildings.forEach((building, index) => {
-        const buildingData = buildings.find(b => b.id === building.id);
-        if (!buildingData) return;
-        
-        const isConstructing = building.constructionProgress < buildingData.buildTime;
-        const progressPercent = isConstructing ? 
-            (building.constructionProgress / buildingData.buildTime) * 100 : 100;
-        
-        cityHTML += `
-            <div class="relative group">
-                <div class="building-card p-4 rounded-xl border-2 ${isConstructing ? 'border-yellow-300 bg-yellow-50' : 'border-green-300 bg-white'} 
-                     shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-105 cursor-pointer"
-                     data-building-id="${building.id}">
-                    <div class="text-3xl mb-2 ${isConstructing ? 'opacity-50' : ''}">
-                        ${buildingData.sprite}
-                    </div>
-                    <div class="text-xs font-bold text-gray-700">${buildingData.name}</div>
-                    <div class="text-xs text-gray-500">سطح ${building.level}</div>
-                    
-                    ${isConstructing ? `
-                        <div class="mt-2">
-                            <div class="text-xs text-yellow-600 mb-1">در حال ساخت...</div>
-                            <div class="w-full bg-gray-200 rounded-full h-2">
-                                <div class="bg-yellow-500 h-2 rounded-full transition-all duration-1000" 
-                                     style="width: ${progressPercent}%"></div>
-                            </div>
-                        </div>
-                    ` : ''}
-                </div>
-            </div>
-        `;
-    });
-    
-    // نقطه خالی برای ساخت جدید
-    cityHTML += `
-                    <div class="empty-slot flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-gray-300 
-                         hover:border-green-500 hover:bg-green-50 transition-all cursor-pointer"
-                         onclick="showBuildingMenu()">
-                        <i class="fas fa-plus text-gray-400 text-2xl mb-2"></i>
-                        <div class="text-xs text-gray-600">ساختمان جدید</div>
-                    </div>
-                </div>
-                
-                <!-- اطلاعات شهر -->
-                <div class="absolute bottom-4 left-4 right-4 flex justify-between text-xs">
-                    <div class="bg-white bg-opacity-90 px-3 py-1 rounded-full shadow">
-                        <i class="fas fa-users text-blue-600 ml-1"></i>
-                        جمعیت: ${gameState.city.population}
-                    </div>
-                    <div class="bg-white bg-opacity-90 px-3 py-1 rounded-full shadow">
-                        <i class="fas fa-smile text-yellow-600 ml-1"></i>
-                        رضایت: ${gameState.city.happiness}%
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    gameContainer.innerHTML = cityHTML;
-    
-    // اضافه کردن event listener برای ساختمان‌ها
-    document.querySelectorAll('.building-card').forEach(card => {
-        card.addEventListener('click', function() {
-            const buildingId = parseInt(this.getAttribute('data-building-id'));
-            showBuildingDetails(buildingId);
-        });
-    });
-}
-
-// رادر پنل منابع
-function renderResourcesPanel() {
-    const container = document.getElementById('resourcesPanel') || createResourcesPanel();
-    
-    container.innerHTML = `
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div class="bg-gradient-to-br from-green-50 to-emerald-50 p-3 rounded-xl border border-green-200">
-                <div class="flex items-center">
-                    <div class="bg-green-100 p-2 rounded-lg ml-2">
-                        <i class="fas fa-tree text-green-600"></i>
-                    </div>
-                    <div>
-                        <p class="text-xs text-green-600">چوب</p>
-                        <h5 class="text-lg font-bold text-green-800">${gameState.city.resources.wood}</h5>
-                    </div>
-                </div>
-                <div class="text-xs text-green-700 mt-1">
-                    <i class="fas fa-arrow-up ml-1"></i>
-                    ${gameState.city.productionRates.wood}/۳۰ثانیه
-                </div>
-            </div>
-            
-            <div class="bg-gradient-to-br from-gray-50 to-gray-100 p-3 rounded-xl border border-gray-200">
-                <div class="flex items-center">
-                    <div class="bg-gray-100 p-2 rounded-lg ml-2">
-                        <i class="fas fa-mountain text-gray-600"></i>
-                    </div>
-                    <div>
-                        <p class="text-xs text-gray-600">سنگ</p>
-                        <h5 class="text-lg font-bold text-gray-800">${gameState.city.resources.stone}</h5>
-                    </div>
-                </div>
-                <div class="text-xs text-gray-700 mt-1">
-                    <i class="fas fa-arrow-up ml-1"></i>
-                    ${gameState.city.productionRates.stone}/۳۰ثانیه
-                </div>
-            </div>
-            
-            <div class="bg-gradient-to-br from-yellow-50 to-amber-50 p-3 rounded-xl border border-yellow-200">
-                <div class="flex items-center">
-                    <div class="bg-yellow-100 p-2 rounded-lg ml-2">
-                        <i class="fas fa-coins text-yellow-600"></i>
-                    </div>
-                    <div>
-                        <p class="text-xs text-yellow-600">طلا</p>
-                        <h5 class="text-lg font-bold text-yellow-800">${gameState.city.resources.gold}</h5>
-                    </div>
-                </div>
-                <div class="text-xs text-yellow-700 mt-1">
-                    <i class="fas fa-building ml-1"></i>
-                    از ساختمان‌ها
-                </div>
-            </div>
-            
-            <div class="bg-gradient-to-br from-blue-50 to-indigo-50 p-3 rounded-xl border border-blue-200">
-                <div class="flex items-center">
-                    <div class="bg-blue-100 p-2 rounded-lg ml-2">
-                        <i class="fas fa-graduation-cap text-blue-600"></i>
-                    </div>
-                    <div>
-                        <p class="text-xs text-blue-600">دانش</p>
-                        <h5 class="text-lg font-bold text-blue-800">${gameState.city.resources.knowledge}</h5>
-                    </div>
-                </div>
-                <div class="text-xs text-blue-700 mt-1">
-                    <i class="fas fa-arrow-up ml-1"></i>
-                    ${gameState.city.productionRates.knowledge}/دقیقه
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-// ایجاد پنل منابع اگر وجود ندارد
-function createResourcesPanel() {
-    const panel = document.createElement('div');
-    panel.id = 'resourcesPanel';
-    panel.className = 'mb-6';
-    
-    const gameScene = document.getElementById('gameScene');
-    if (gameScene && gameScene.parentNode) {
-        gameScene.parentNode.insertBefore(panel, gameScene.nextSibling);
-    }
-    
-    return panel;
-}
-
-// رندر پنل ساختمان‌ها
-function renderBuildingsPanel() {
-    const container = document.getElementById('upgradesList');
-    if (!container) return;
-    
-    let buildingsHTML = `
-        <div class="mb-6">
-            <h5 class="font-bold text-blue-700 mb-3 flex items-center">
-                <i class="fas fa-city ml-2"></i> ساختمان‌های قابل ساخت
-            </h5>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-    `;
-    
-    buildings.forEach(building => {
-        const isBuilt = gameState.city.buildings.some(b => b.id === building.id);
-        const canAfford = canBuildBuilding(building.id);
-        
-        buildingsHTML += `
-            <div class="bg-white p-4 rounded-lg border ${canAfford && !isBuilt ? 'border-blue-200 hover:border-blue-400 cursor-pointer' : 'border-gray-200'} 
-                 transition-all ${!canAfford || isBuilt ? 'opacity-75' : ''}"
-                 ${canAfford && !isBuilt ? `onclick="startBuilding(${building.id})"` : ''}>
-                <div class="flex items-start mb-3">
-                    <div class="text-2xl ml-3">${building.sprite}</div>
-                    <div class="flex-1">
-                        <h6 class="font-bold text-gray-800">${building.name}</h6>
-                        <p class="text-xs text-gray-600">${building.description}</p>
-                    </div>
-                    ${isBuilt ? `
-                        <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
-                            ساخته شده
-                        </span>
-                    ` : ''}
-                </div>
-                
-                <div class="text-xs text-gray-500 mb-2">${building.effect}</div>
-                
-                <div class="space-y-1 mb-3">
-                    ${building.cost.wood ? `
-                        <div class="flex justify-between items-center">
-                            <span class="text-green-600">چوب:</span>
-                            <span class="font-bold ${gameState.city.resources.wood >= building.cost.wood ? 'text-green-700' : 'text-red-600'}">
-                                ${building.cost.wood}
-                            </span>
-                        </div>
-                    ` : ''}
-                    ${building.cost.stone ? `
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-600">سنگ:</span>
-                            <span class="font-bold ${gameState.city.resources.stone >= building.cost.stone ? 'text-gray-700' : 'text-red-600'}">
-                                ${building.cost.stone}
-                            </span>
-                        </div>
-                    ` : ''}
-                </div>
-                
-                <div class="text-xs text-center text-gray-500">
-                    زمان ساخت: ${Math.floor(building.buildTime / 60)} دقیقه
-                </div>
-            </div>
-        `;
-    });
-    
-    buildingsHTML += `
-            </div>
-        </div>
-    `;
-    
-    container.innerHTML = buildingsHTML;
-}
-
-// رندر پنل تکنولوژی‌ها
-function renderTechnologiesPanel() {
-    const container = document.getElementById('researchPanel');
-    if (!container) return;
-    
-    let techHTML = `
-        <div class="bg-gradient-to-br from-purple-50 to-indigo-50 p-4 rounded-xl border border-purple-200">
-            <h5 class="font-bold text-purple-700 mb-3 flex items-center">
-                <i class="fas fa-flask ml-2"></i> تحقیقات
-            </h5>
-    `;
-    
-    if (gameState.researching) {
-        const tech = technologies.find(t => t.id === gameState.researching);
-        if (tech) {
-            const progressPercent = (1 - gameState.researchTimeLeft / tech.researchTime) * 100;
-            
-            techHTML += `
-                <div class="mb-4">
-                    <div class="flex items-center mb-2">
-                        <div class="text-2xl ml-2">${tech.sprite}</div>
-                        <div>
-                            <h6 class="font-bold text-purple-800">${tech.name}</h6>
-                            <p class="text-xs text-purple-600">در حال تحقیق...</p>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-1">
-                        <div class="flex justify-between text-xs text-purple-600 mb-1">
-                            <span>پیشرفت</span>
-                            <span>${Math.floor(progressPercent)}%</span>
-                        </div>
-                        <div class="w-full bg-gray-200 rounded-full h-2">
-                            <div class="bg-gradient-to-r from-purple-500 to-indigo-500 h-2 rounded-full transition-all duration-1000" 
-                                 style="width: ${progressPercent}%"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="text-xs text-center text-gray-500 mt-2">
-                        ${Math.ceil(gameState.researchTimeLeft / 60)} دقیقه باقی‌مانده
-                    </div>
-                </div>
-            `;
-        }
-    }
-    
-    techHTML += `
-        <div class="space-y-3">
-    `;
-    
-    technologies.forEach(tech => {
-        const isResearched = gameState.technologies.includes(tech.id);
-        const prerequisitesMet = tech.prerequisites.every(p => gameState.technologies.includes(p));
-        const canResearch = !isResearched && prerequisitesMet && 
-                           gameState.city.resources.knowledge >= tech.cost.knowledge;
-        
-        techHTML += `
-            <div class="flex items-center justify-between p-3 rounded-lg ${isResearched ? 'bg-green-100 border border-green-200' : 'bg-white border border-gray-200'}">
-                <div class="flex items-center">
-                    <div class="text-xl ml-3">${tech.sprite}</div>
-                    <div>
-                        <h6 class="font-bold ${isResearched ? 'text-green-800' : 'text-gray-800'}">${tech.name}</h6>
-                        <p class="text-xs ${isResearched ? 'text-green-600' : 'text-gray-600'}">${tech.description}</p>
-                    </div>
-                </div>
-                
-                ${!isResearched ? `
-                    <button onclick="${canResearch ? `startResearch(${tech.id})` : ''}" 
-                            class="px-3 py-1 ${canResearch ? 'bg-purple-500 hover:bg-purple-600 text-white' : 'bg-gray-300 text-gray-500'} rounded text-sm">
-                        ${canResearch ? `${tech.cost.knowledge} دانش` : 'قفل شده'}
-                    </button>
-                ` : `
-                    <span class="px-3 py-1 bg-green-100 text-green-800 rounded text-sm">
-                        <i class="fas fa-check ml-1"></i> تحقیق شده
-                    </span>
-                `}
-            </div>
-        `;
-    });
-    
-    techHTML += `
-        </div>
-    </div>`;
-    
-    container.innerHTML = techHTML;
-}
-
-// رندر پنل مأموریت‌ها
-function renderMissionsPanel() {
-    const container = document.getElementById('missionsPanel');
-    if (!container) return;
-    
-    // اگر مأموریت فعالی نداریم، ایجاد کن
-    if (gameState.activeMissions.length === 0) {
-        initializeDailyMissions();
-    }
-    
-    let missionsHTML = `
-        <div class="bg-gradient-to-br from-orange-50 to-yellow-50 p-4 rounded-xl border border-orange-200">
-            <h5 class="font-bold text-orange-700 mb-3 flex items-center">
-                <i class="fas fa-tasks ml-2"></i> مأموریت‌های روزانه
-            </h5>
-            
-            <div class="space-y-3">
-    `;
-    
-    gameState.activeMissions.forEach(missionData => {
-        const mission = dailyMissions.find(m => m.id === missionData.id);
-        if (!mission) return;
-        
-        const progress = gameState.missionProgress[mission.id] || 0;
-        const isCompleted = progress >= mission.target;
-        const progressPercent = (progress / mission.target) * 100;
-        
-        missionsHTML += `
-            <div class="bg-white p-3 rounded-lg border ${isCompleted ? 'border-green-200 bg-green-50' : 'border-gray-200'}">
-                <div class="flex justify-between items-start mb-2">
-                    <div>
-                        <h6 class="font-bold ${isCompleted ? 'text-green-800' : 'text-gray-800'}">
-                            ${mission.title}
-                        </h6>
-                        <p class="text-xs ${isCompleted ? 'text-green-600' : 'text-gray-600'}">
-                            ${mission.description}
-                        </p>
-                    </div>
-                    ${isCompleted ? `
-                        <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">
-                            تکمیل شده
-                        </span>
-                    ` : ''}
-                </div>
-                
-                <div class="mb-2">
-                    <div class="flex justify-between text-xs text-gray-600 mb-1">
-                        <span>پیشرفت</span>
-                        <span>${Math.floor(progress)}/${mission.target}</span>
-                    </div>
-                    <div class="w-full bg-gray-200 rounded-full h-2">
-                        <div class="bg-gradient-to-r from-orange-400 to-yellow-400 h-2 rounded-full transition-all duration-1000" 
-                             style="width: ${Math.min(progressPercent, 100)}%"></div>
-                    </div>
-                </div>
-                
-                <div class="flex justify-between items-center">
-                    <div class="text-xs text-gray-500">
-                        جایزه: 
-                        ${mission.reward.wood ? `<i class="fas fa-tree text-green-500 ml-1"></i> ${mission.reward.wood} ` : ''}
-                        ${mission.reward.stone ? `<i class="fas fa-mountain text-gray-500 ml-1"></i> ${mission.reward.stone} ` : ''}
-                        ${mission.reward.knowledge ? `<i class="fas fa-graduation-cap text-blue-500 ml-1"></i> ${mission.reward.knowledge}` : ''}
-                    </div>
-                    ${isCompleted ? `
-                        <button onclick="claimMissionReward(${mission.id})" 
-                                class="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600 transition-colors">
-                            دریافت جایزه
-                        </button>
-                    ` : `
-                        <span class="px-3 py-1 bg-gray-300 text-gray-500 rounded text-sm">
-                            در حال انجام
-                        </span>
-                    `}
-                </div>
-            </div>
-        `;
-    });
-    
-    missionsHTML += `
-            </div>
-        </div>
-    `;
-    
-    container.innerHTML = missionsHTML;
-}
-
-// رندر نمودار هفتگی واقعی
-function renderWeeklyChart() {
-    const chartContainer = document.getElementById('progressChart');
-    if (!chartContainer) return;
-    
-    const dayNames = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
-    const maxValue = Math.max(...gameState.weeklyProgress.days, 1);
-    
-    let chartHTML = `
-        <div class="flex items-end h-40 gap-2 justify-between">
-    `;
-    
-    gameState.weeklyProgress.days.forEach((value, index) => {
-        const heightPercent = maxValue > 0 ? (value / maxValue) * 100 : 0;
-        const isToday = index === gameState.weeklyProgress.currentDayIndex;
-        
-        chartHTML += `
-            <div class="text-center flex-1">
-                <div class="relative mb-2 mx-auto" style="width: 80%;">
-                    <div class="bg-gradient-to-t ${isToday ? 'from-green-500 to-emerald-600' : 'from-blue-400 to-blue-500'} 
-                         rounded-t-lg transition-all duration-1000" 
-                         style="height: ${heightPercent}%;">
-                         
-                        <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-white px-2 py-1 rounded-lg shadow text-xs font-bold
-                             ${isToday ? 'text-green-700' : 'text-blue-700'}">
-                            ${Math.floor(value / 60)} دقیقه
-                        </div>
-                    </div>
-                </div>
-                <p class="text-xs ${isToday ? 'text-green-700 font-bold' : 'text-gray-600'}">${dayNames[index]}</p>
-            </div>
-        `;
-    });
-    
-    chartHTML += `</div>`;
-    
-    chartContainer.innerHTML = chartHTML;
-}
-
-// ==================== سیستم تایمر تمیز ====================
-
-// شروع تایمر حالت عادی (شمارنده رو به بالا)
-function startTimer() {
-    if (appData.timerState.isRunning) return;
-    
-    appData.timerState.isRunning = true;
-    appData.timerState.isPaused = false;
-    appData.timerState.startTime = Date.now();
-    
-    updateTimerControls();
-    showNotification('⏱️ تایمر شروع شد! موفق باشید 🚀', 'success');
-    
-    // پاک کردن اینتروال قبلی
-    if (appData.timerState.timerInterval) {
-        clearInterval(appData.timerState.timerInterval);
-    }
-    
-    // شروع شمارنده رو به بالا
-    appData.timerState.timerInterval = setInterval(() => {
-        // افزایش ثانیه‌ها
-        appData.timerState.elapsedSeconds = Math.floor((Date.now() - appData.timerState.startTime) / 1000);
-        updateTimerDisplay();
-        
-        // هر ۳۰ ثانیه: تولید منابع
-        if (appData.timerState.elapsedSeconds % 30 === 0) {
-            produceResources();
-        }
-        
-        // هر دقیقه: پیشرفت مأموریت‌ها
-        if (appData.timerState.elapsedSeconds % 60 === 0) {
-            updateMissionProgress();
-            updateWeeklyProgress();
-        }
-        
-        // هر ۵ دقیقه: تولید دانش
-        if (appData.timerState.elapsedSeconds % 300 === 0) {
-            produceKnowledge();
-        }
-        
-        // بررسی چالش
-        if (gameState.activeChallenge) {
-            updateChallengeProgress();
-        }
-        
-        // رندر صفحه
-        renderFocusPage();
-        
-    }, 1000); // به‌روزرسانی هر ثانیه
-}
-
-// توقف تایمر
-function pauseTimer() {
-    if (!appData.timerState.isRunning) return;
-    
-    appData.timerState.isRunning = false;
-    appData.timerState.isPaused = true;
-    appData.timerState.pauseTime = Date.now();
-    
-    clearInterval(appData.timerState.timerInterval);
-    
-    // نمایش دکمه ادامه
-    document.getElementById('pauseTimer').style.display = 'none';
-    document.getElementById('continueTimer').style.display = 'inline-flex';
-    
-    showNotification('⏸️ تایمر متوقف شد', 'warning');
-}
-
-// ادامه تایمر
-function continueTimer() {
-    if (!appData.timerState.isPaused) return;
-    
-    // محاسبه زمان توقف
-    const pauseDuration = Date.now() - appData.timerState.pauseTime;
-    appData.timerState.startTime += pauseDuration;
-    
-    appData.timerState.isRunning = true;
-    appData.timerState.isPaused = false;
-    
-    // پنهان کردن دکمه ادامه
-    document.getElementById('continueTimer').style.display = 'none';
-    document.getElementById('pauseTimer').style.display = 'inline-flex';
-    
-    // ادامه تایمر
-    appData.timerState.timerInterval = setInterval(() => {
-        appData.timerState.elapsedSeconds = Math.floor((Date.now() - appData.timerState.startTime) / 1000);
-        updateTimerDisplay();
-        
-        // سایر عملیات...
-        if (appData.timerState.elapsedSeconds % 30 === 0) {
-            produceResources();
-        }
-        
-        renderFocusPage();
-    }, 1000);
-    
-    showNotification('▶️ تایمر ادامه یافت', 'success');
-}
-
-// پایان فوکوس (دستی توسط کاربر)
-function endFocusSession() {
-    if (!appData.timerState.isRunning && !appData.timerState.isPaused) return;
-    
-    // توقف تایمر
-    clearInterval(appData.timerState.timerInterval);
-    
-    // محاسبه کل زمان
-    const totalSeconds = appData.timerState.elapsedSeconds || 0;
-    
-    // ثبت آمار
-    gameState.focusStats.totalSeconds += totalSeconds;
-    gameState.focusStats.todaySeconds += totalSeconds;
-    gameState.focusStats.lastSession = Date.now();
-    
-    // آپدیت نمودار هفتگی
-    updateWeeklyProgress(totalSeconds);
-    
-    // محاسبه پاداش‌ها
-    calculateSessionRewards(totalSeconds);
-    
-    // نمایش نتایج
-    showSessionResults(totalSeconds);
-    
-    // ریست تایمر
-    resetTimer();
-    
-    showNotification('🎉 جلسه فوکوس با موفقیت پایان یافت!', 'success');
-}
-
-// محاسبه پاداش‌های جلسه
-function calculateSessionRewards(seconds) {
-    const minutes = seconds / 60;
-    
-    // امتیاز پایه
-    let basePoints = minutes * 10;
-    
-    // ضریب ساختمان‌ها
-    let multiplier = 1.0;
-    gameState.city.buildings.forEach(building => {
-        const buildingData = buildings.find(b => b.id === building.id);
-        if (buildingData && !building.constructionProgress) {
-            // اعمال اثر ساختمان‌ها
-            if (buildingData.type === 'tree') multiplier *= 1.2;
-            if (buildingData.type === 'mine') multiplier *= 1.1;
-            if (buildingData.type === 'workshop') multiplier *= 1.3;
-        }
-    });
-    
-    // ضریب تکنولوژی‌ها
-    gameState.technologies.forEach(techId => {
-        const tech = technologies.find(t => t.id === techId);
-        if (tech) {
-            if (tech.id === 1) multiplier *= 1.25; // آبیاری پیشرفته
-            if (tech.id === 2) multiplier *= 1.15; // مکانیزاسیون
-        }
-    });
-    
-    // ضریب رضایت
-    multiplier *= (gameState.city.happiness / 100);
-    
-    // محاسبه نهایی
-    const finalPoints = Math.floor(basePoints * multiplier);
-    
-    // اضافه کردن امتیاز
-    appData.focusData.focusScore += finalPoints;
-    appData.focusData.levelProgress += finalPoints;
-    
-    // تولید منابع بر اساس زمان
-    const resourcesGained = {
-        wood: Math.floor(minutes * gameState.city.productionRates.wood * multiplier),
-        stone: Math.floor(minutes * gameState.city.productionRates.stone * multiplier),
-        knowledge: Math.floor(minutes * gameState.city.productionRates.knowledge * multiplier)
-    };
-    
-    // اضافه کردن منابع
-    gameState.city.resources.wood += resourcesGained.wood;
-    gameState.city.resources.stone += resourcesGained.stone;
-    gameState.city.resources.knowledge += resourcesGained.knowledge;
-    
-    // تولید طلا از ساختمان‌ها
-    gameState.city.buildings.forEach(building => {
-        const buildingData = buildings.find(b => b.id === building.id);
-        if (buildingData && buildingData.production && buildingData.production.gold && !building.constructionProgress) {
-            gameState.city.resources.gold += Math.floor(minutes * buildingData.production.gold * multiplier);
-        }
-    });
-    
-    // افزایش جمعیت
-    if (finalPoints > 1000) {
-        gameState.city.population += Math.floor(finalPoints / 1000);
-    }
-    
-    // افزایش رضایت
-    gameState.city.happiness = Math.min(gameState.city.happiness + Math.floor(minutes / 5), 100);
-    
-    // بررسی ارتقای سطح
-    while (appData.focusData.levelProgress >= 100) {
-        appData.focusData.level++;
-        appData.focusData.levelProgress -= 100;
-        
-        // پاداش سطح
-        const levelReward = appData.focusData.level * 100;
-        appData.focusData.focusScore += levelReward;
-        gameState.city.resources.gold += levelReward;
-        
-        showNotification(`🎯 سطح ${appData.focusData.level} رسیدی! +${levelReward} امتیاز`, 'success');
-    }
-    
-    return {
-        points: finalPoints,
-        resources: resourcesGained,
-        multiplier: multiplier.toFixed(2)
-    };
-}
-
-// نمایش نتایج جلسه
-function showSessionResults(seconds) {
-    const minutes = Math.floor(seconds / 60);
-    const rewards = calculateSessionRewards(seconds);
-    
-    const resultsHTML = `
-        <div class="modal open" id="sessionResultsModal">
-            <div class="modal-content max-w-md">
-                <div class="text-center p-6">
-                    <div class="text-5xl mb-4">🏆</div>
-                    <h3 class="text-xl font-bold text-green-800 mb-2">جلسه فوکوس تکمیل شد!</h3>
-                    <p class="text-gray-600 mb-6">${minutes} دقیقه تمرکز عالی داشتید</p>
-                    
-                    <div class="grid grid-cols-2 gap-4 mb-6">
-                        <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl">
-                            <div class="text-2xl text-blue-600 mb-2">⏱️</div>
-                            <p class="text-sm text-blue-700">مدت زمان</p>
-                            <h4 class="text-lg font-bold text-blue-800">${minutes} دقیقه</h4>
-                        </div>
-                        <div class="bg-gradient-to-br from-yellow-50 to-amber-100 p-4 rounded-xl">
-                            <div class="text-2xl text-yellow-600 mb-2">⭐</div>
-                            <p class="text-sm text-yellow-700">امتیاز کسب شده</p>
-                            <h4 class="text-lg font-bold text-yellow-800">${rewards.points}</h4>
-                        </div>
-                    </div>
-                    
-                    <div class="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl mb-6">
-                        <h4 class="font-bold text-green-800 mb-3">🎁 منابع کسب شده</h4>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div class="flex items-center">
-                                <i class="fas fa-tree text-green-600 ml-2"></i>
-                                <span class="text-gray-700">چوب:</span>
-                                <span class="font-bold text-green-700 mr-auto">+${rewards.resources.wood}</span>
-                            </div>
-                            <div class="flex items-center">
-                                <i class="fas fa-mountain text-gray-600 ml-2"></i>
-                                <span class="text-gray-700">سنگ:</span>
-                                <span class="font-bold text-gray-700 mr-auto">+${rewards.resources.stone}</span>
-                            </div>
-                            <div class="flex items-center">
-                                <i class="fas fa-coins text-yellow-600 ml-2"></i>
-                                <span class="text-gray-700">طلا:</span>
-                                <span class="font-bold text-yellow-700 mr-auto">+${gameState.city.resources.gold}</span>
-                            </div>
-                            <div class="flex items-center">
-                                <i class="fas fa-graduation-cap text-blue-600 ml-2"></i>
-                                <span class="text-gray-700">دانش:</span>
-                                <span class="font-bold text-blue-700 mr-auto">+${rewards.resources.knowledge}</span>
-                            </div>
-                        </div>
-                        <div class="text-xs text-center text-gray-500 mt-3">
-                            ضریب عملکرد: ${rewards.multiplier}x
-                        </div>
-                    </div>
-                    
-                    <button onclick="closeModal('sessionResultsModal')" 
-                            class="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full hover:from-green-600 hover:to-emerald-700 font-bold shadow-lg hover:shadow-xl transition-all">
-                        بستن و ادامه
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    document.getElementById('modalContainer').innerHTML = resultsHTML;
-}
-
-// ==================== توابع سیستم منابع ====================
-
-// تولید منابع بر اساس ساختمان‌ها
-function produceResources() {
-    // تولید پایه (چوب و سنگ)
-    gameState.city.resources.wood += gameState.city.productionRates.wood;
-    gameState.city.resources.stone += gameState.city.productionRates.stone;
-    
-    // تولید از ساختمان‌ها
-    gameState.city.buildings.forEach(building => {
-        if (!building.constructionProgress) { // اگر ساختمان کامل شده
-            const buildingData = buildings.find(b => b.id === building.id);
-            if (buildingData && buildingData.production) {
-                Object.keys(buildingData.production).forEach(resource => {
-                    gameState.city.resources[resource] += buildingData.production[resource];
+                // ریست ساعت‌های امروز برای هر درس
+                if (appData.focusSystem.subjects) {
+                    appData.focusSystem.subjects.forEach(subject => {
+                        subject.todayHours = 0;
+                    });
+                }
+            } else {
+                // ادغام داده‌های ذخیره شده
+                Object.keys(parsed).forEach(key => {
+                    if (key !== 'lastSavedDate' && key in appData.focusSystem) {
+                        appData.focusSystem[key] = parsed[key];
+                    }
                 });
             }
         }
-    });
-    
-    renderFocusPage();
+    } catch (e) {
+        console.warn('⚠️ Could not load focus data:', e);
+    }
 }
 
-// تولید دانش
-function produceKnowledge() {
-    // تولید پایه دانش
-    gameState.city.resources.knowledge += gameState.city.productionRates.knowledge;
-    
-    // تولید از ساختمان‌های دانش
-    gameState.city.buildings.forEach(building => {
-        const buildingData = buildings.find(b => b.id === building.id);
-        if (buildingData && buildingData.category === 'knowledge' && !building.constructionProgress) {
-            gameState.city.resources.knowledge += buildingData.production.knowledge || 0;
+function saveFocusData() {
+    try {
+        appData.focusSystem.lastSavedDate = new Date().toDateString();
+        localStorage.setItem('focusSystemData', JSON.stringify(appData.focusSystem));
+    } catch (e) {
+        console.warn('⚠️ Could not save focus data:', e);
+    }
+}
+
+// ==================== STUDY FORM WITH GOALS AND SUBJECTS ====================
+
+function renderStudyForm() {
+    const studyForm = document.querySelector('#stopwatchMode .bg-gradient-to-r.from-gray-50.to-gray-100');
+    if (studyForm) {
+        const existingGoalField = studyForm.querySelector('#studyGoal');
+        if (!existingGoalField) {
+            const notesField = studyForm.querySelector('#studyNotes');
+            if (notesField) {
+                const goalContainer = document.createElement('div');
+                goalContainer.className = 'mt-3';
+                goalContainer.innerHTML = `
+                    <label class="block text-sm font-medium text-gray-700 mb-1">🎯 هدف مطالعه (اختیاری)</label>
+                    <input type="text" id="studyGoal" 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200" 
+                           placeholder="مثلاً: اتمام فصل ۳، حل ۱۰ سوال، مرور تست‌ها...">
+                    <p class="text-xs text-gray-500 mt-1">هدف خود برای این جلسه مطالعه را مشخص کنید</p>
+                `;
+                notesField.parentNode.insertBefore(goalContainer, notesField);
+            }
         }
-    });
-    
-    renderFocusPage();
-}
-
-// ==================== توابع ساختمان‌ها ====================
-
-// بررسی امکان ساخت ساختمان
-function canBuildBuilding(buildingId) {
-    const building = buildings.find(b => b.id === buildingId);
-    if (!building) return false;
-    
-    // بررسی اینکه قبلاً ساخته نشده باشد
-    if (gameState.city.buildings.some(b => b.id === buildingId && !b.constructionProgress)) {
-        return false;
     }
     
-    // بررسی منابع
-    return (
-        gameState.city.resources.wood >= (building.cost.wood || 0) &&
-        gameState.city.resources.stone >= (building.cost.stone || 0)
-    );
+    updateStudySubjectDropdown();
 }
 
-// شروع ساخت ساختمان
-function startBuilding(buildingId) {
-    if (!canBuildBuilding(buildingId)) {
-        showNotification('منابع کافی نیست یا ساختمان قبلاً ساخته شده', 'error');
-        return;
+function updateStudySubjectDropdown() {
+    const dropdown = document.getElementById('studySubject');
+    if (!dropdown) return;
+    
+    while (dropdown.options.length > 0) {
+        dropdown.remove(0);
     }
     
-    const building = buildings.find(b => b.id === buildingId);
+    const defaultOption = document.createElement('option');
+    defaultOption.value = "";
+    defaultOption.textContent = "انتخاب درس";
+    dropdown.appendChild(defaultOption);
     
-    // کسر منابع
-    gameState.city.resources.wood -= building.cost.wood || 0;
-    gameState.city.resources.stone -= building.cost.stone || 0;
+    if (appData.focusSystem.subjects && appData.focusSystem.subjects.length > 0) {
+        appData.focusSystem.subjects.forEach(subject => {
+            const option = document.createElement('option');
+            option.value = subject.name;
+            option.textContent = subject.name;
+            dropdown.appendChild(option);
+        });
+    } else {
+        const defaultSubjects = ["ریاضی", "فیزیک", "شیمی", "زیست شناسی", "ادبیات فارسی", "عربی", "دین و زندگی", "زبان انگلیسی"];
+        defaultSubjects.forEach(subjectName => {
+            const option = document.createElement('option');
+            option.value = subjectName;
+            option.textContent = subjectName;
+            dropdown.appendChild(option);
+        });
+    }
+}
+
+// ==================== CUSTOM SUBJECTS MANAGEMENT ====================
+
+function setupSubjectsManagement() {
+    const subjectsList = document.getElementById('subjectsList');
+    if (!subjectsList) return;
     
-    // اضافه کردن ساختمان در حال ساخت
-    const newBuilding = {
-        id: building.id,
-        level: 1,
-        constructionProgress: 0,
-        constructionTime: building.buildTime
+    const subjectsContainer = subjectsList.closest('.bg-white.rounded-2xl.shadow.p-6');
+    if (subjectsContainer) {
+        let managementForm = subjectsContainer.querySelector('#subjectsManagementForm');
+        
+        if (!managementForm) {
+            managementForm = document.createElement('div');
+            managementForm.id = 'subjectsManagementForm';
+            managementForm.className = 'mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-purple-200';
+            managementForm.innerHTML = `
+                <h5 class="font-bold text-gray-800 mb-3 flex items-center">
+                    <i class="fas fa-palette ml-2 text-purple-600"></i>
+                    شخصی‌سازی دروس
+                </h5>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">نام درس</label>
+                        <input type="text" id="manageSubjectName" 
+                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                               placeholder="مثلاً: هندسه، لغات، گرامر...">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">رنگ درس</label>
+                        <select id="manageSubjectColor" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                            <option value="purple">بنفش</option>
+                            <option value="blue">آبی</option>
+                            <option value="emerald">سبز</option>
+                            <option value="amber">زرد</option>
+                            <option value="rose">قرمز</option>
+                            <option value="teal">فیروزه‌ای</option>
+                            <option value="pink">صورتی</option>
+                            <option value="indigo">نیلی</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="saveManagedSubject()" 
+                                class="w-full px-4 py-2 text-sm bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-lg hover:from-purple-600 hover:to-pink-700 transition-all font-medium">
+                            <i class="fas fa-plus ml-2"></i>
+                            افزودن درس
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <label class="block text-xs font-medium text-gray-700 mb-1">پیش‌نمایش رنگ</label>
+                    <div id="colorPreview" class="h-8 rounded-lg border border-gray-300 flex items-center justify-center text-xs font-medium">
+                        رنگ انتخاب شده
+                    </div>
+                </div>
+            `;
+            
+            subjectsContainer.insertBefore(managementForm, subjectsContainer.querySelector('.space-y-3'));
+            
+            const colorSelect = document.getElementById('manageSubjectColor');
+            const colorPreview = document.getElementById('colorPreview');
+            
+            if (colorSelect && colorPreview) {
+                colorSelect.addEventListener('change', function() {
+                    const color = this.value;
+                    updateColorPreview(color);
+                });
+                
+                updateColorPreview(colorSelect.value);
+            }
+        }
+    }
+}
+
+function updateColorPreview(color) {
+    const colorPreview = document.getElementById('colorPreview');
+    if (!colorPreview) return;
+    
+    const colorClasses = {
+        'purple': 'bg-gradient-to-r from-purple-400 to-purple-600 text-white',
+        'blue': 'bg-gradient-to-r from-blue-400 to-blue-600 text-white',
+        'emerald': 'bg-gradient-to-r from-emerald-400 to-emerald-600 text-white',
+        'amber': 'bg-gradient-to-r from-amber-400 to-amber-600 text-white',
+        'rose': 'bg-gradient-to-r from-rose-400 to-rose-600 text-white',
+        'teal': 'bg-gradient-to-r from-teal-400 to-teal-600 text-white',
+        'pink': 'bg-gradient-to-r from-pink-400 to-pink-600 text-white',
+        'indigo': 'bg-gradient-to-r from-indigo-400 to-indigo-600 text-white'
     };
     
-    gameState.city.buildings.push(newBuilding);
+    const displayNames = {
+        'purple': 'بنفش',
+        'blue': 'آبی',
+        'emerald': 'سبز',
+        'amber': 'زرد',
+        'rose': 'قرمز',
+        'teal': 'فیروزه‌ای',
+        'pink': 'صورتی',
+        'indigo': 'نیلی'
+    };
     
-    // شروع تایمر ساخت
-    const buildInterval = setInterval(() => {
-        const buildingIndex = gameState.city.buildings.findIndex(b => 
-            b.id === buildingId && b.constructionProgress < b.constructionTime
-        );
-        
-        if (buildingIndex !== -1) {
-            gameState.city.buildings[buildingIndex].constructionProgress++;
-            
-            // اگر ساخت کامل شد
-            if (gameState.city.buildings[buildingIndex].constructionProgress >= building.buildTime) {
-                clearInterval(buildInterval);
-                
-                // افزایش جمعیت
-                gameState.city.population += 5;
-                
-                // افزایش رضایت
-                gameState.city.happiness = Math.min(gameState.city.happiness + 10, 100);
-                
-                // افزایش نرخ تولید
-                if (building.type === 'tree') {
-                    gameState.city.productionRates.wood *= 1.5;
-                } else if (building.type === 'mine') {
-                    gameState.city.productionRates.stone *= 2.0;
-                }
-                
-                showNotification(`🎉 ${building.name} با موفقیت ساخته شد!`, 'success');
-                
-                // به‌روزرسانی مأموریت ساخت ساختمان
-                updateMissionProgress(buildingId, 'build');
-            }
-            
-            renderFocusPage();
-        } else {
-            clearInterval(buildInterval);
-        }
-    }, 1000);
-    
-    showNotification(`🏗️ ساخت ${building.name} آغاز شد!`, 'success');
-    renderFocusPage();
+    colorPreview.className = 'h-8 rounded-lg border border-gray-300 flex items-center justify-center text-xs font-medium';
+    colorPreview.classList.add(colorClasses[color]);
+    colorPreview.textContent = displayNames[color];
 }
 
-// ==================== توابع تحقیق ====================
-
-// شروع تحقیق تکنولوژی
-function startResearch(techId) {
-    const tech = technologies.find(t => t.id === techId);
-    if (!tech || gameState.researching) return;
+function saveManagedSubject() {
+    const name = document.getElementById('manageSubjectName').value;
+    const color = document.getElementById('manageSubjectColor').value;
     
-    // بررسی دانش کافی
-    if (gameState.city.resources.knowledge < tech.cost.knowledge) {
-        showNotification('دانش کافی نیست', 'error');
+    if (!name.trim()) {
+        showNotification('لطفاً نام درس را وارد کنید', 'error');
         return;
     }
     
-    // کسر دانش
-    gameState.city.resources.knowledge -= tech.cost.knowledge;
+    const existingSubject = appData.focusSystem.subjects.find(s => s.name === name);
+    if (existingSubject) {
+        showNotification('این درس قبلاً اضافه شده است', 'error');
+        return;
+    }
     
-    // شروع تحقیق
-    gameState.researching = techId;
-    gameState.researchTimeLeft = tech.researchTime;
+    const newSubject = {
+        id: Date.now(),
+        name: name.trim(),
+        color: color,
+        totalHours: 0,
+        todayHours: 0,
+        weeklyHours: 0
+    };
     
-    // تایمر تحقیق
-    const researchInterval = setInterval(() => {
-        if (gameState.researchTimeLeft > 0) {
-            gameState.researchTimeLeft--;
-            gameState.researchProgress = ((tech.researchTime - gameState.researchTimeLeft) / tech.researchTime) * 100;
-        } else {
-            clearInterval(researchInterval);
-            completeResearch(techId);
+    appData.focusSystem.subjects.push(newSubject);
+    
+    renderSubjectsList();
+    updateStudySubjectDropdown();
+    
+    document.getElementById('manageSubjectName').value = '';
+    
+    showNotification(`✅ درس "${name}" با رنگ ${getColorName(color)} اضافه شد`, 'success');
+    saveFocusData();
+}
+
+function getColorName(color) {
+    const colorNames = {
+        'purple': 'بنفش',
+        'blue': 'آبی',
+        'emerald': 'سبز',
+        'amber': 'زرد',
+        'rose': 'قرمز',
+        'teal': 'فیروزه‌ای',
+        'pink': 'صورتی',
+        'indigo': 'نیلی'
+    };
+    return colorNames[color] || color;
+}
+
+// ==================== RENDER SUBJECTS LIST WITH CUSTOM COLORS ====================
+
+function renderSubjectsList() {
+    const subjectsList = document.getElementById('subjectsList');
+    if (!subjectsList) return;
+    
+    subjectsList.innerHTML = '';
+    
+    if (!appData.focusSystem.subjects || appData.focusSystem.subjects.length === 0) {
+        const emptyMessage = document.createElement('div');
+        emptyMessage.className = 'text-center py-4 text-gray-500';
+        emptyMessage.innerHTML = `
+            <div class="text-3xl mb-2">📚</div>
+            <p>هنوز درسی اضافه نکرده‌اید</p>
+            <p class="text-sm mt-2">از فرم بالا برای افزودن درس جدید استفاده کنید</p>
+        `;
+        subjectsList.appendChild(emptyMessage);
+        return;
+    }
+    
+    appData.focusSystem.subjects.forEach(subject => {
+        const colorClass = getTailwindColorClass(subject.color);
+        
+        const subjectElement = document.createElement('div');
+        subjectElement.className = `subject-item ${colorClass.bg} p-3 rounded-lg border ${colorClass.border} mb-2 hover:shadow-md transition-all duration-200`;
+        subjectElement.innerHTML = `
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full ${colorClass.icon} flex items-center justify-center text-white text-sm font-bold shadow-sm">
+                        ${subject.name.charAt(0)}
+                    </div>
+                    <div>
+                        <div class="font-bold text-gray-800">${subject.name}</div>
+                        <div class="text-xs text-gray-600">امروز: ${subject.todayHours.toFixed(1)} ساعت</div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="font-bold text-gray-800">${subject.weeklyHours.toFixed(1)} ساعت</div>
+                    <div class="text-xs text-gray-600">این هفته</div>
+                </div>
+            </div>
+            <div class="mt-2 flex justify-end">
+                <button onclick="editSubjectColor(${subject.id})" class="text-xs px-3 py-1 bg-white/70 rounded hover:bg-white transition-all mr-2">
+                    <i class="fas fa-palette ml-1 text-${subject.color}-600"></i>
+                    تغییر رنگ
+                </button>
+                <button onclick="deleteSubject(${subject.id})" class="text-xs px-3 py-1 bg-red-50 text-red-600 rounded hover:bg-red-100 transition-all">
+                    <i class="fas fa-trash ml-1"></i>
+                    حذف
+                </button>
+            </div>
+        `;
+        subjectsList.appendChild(subjectElement);
+    });
+    
+    document.getElementById('activeSubjects').textContent = appData.focusSystem.subjects.length;
+}
+
+function getTailwindColorClass(color) {
+    const colorMap = {
+        'purple': {
+            bg: 'bg-gradient-to-r from-purple-50 to-pink-50',
+            border: 'border-purple-100',
+            icon: 'bg-gradient-to-r from-purple-500 to-pink-500'
+        },
+        'blue': {
+            bg: 'bg-gradient-to-r from-blue-50 to-cyan-50',
+            border: 'border-blue-100',
+            icon: 'bg-gradient-to-r from-blue-500 to-cyan-500'
+        },
+        'emerald': {
+            bg: 'bg-gradient-to-r from-emerald-50 to-teal-50',
+            border: 'border-emerald-100',
+            icon: 'bg-gradient-to-r from-emerald-500 to-teal-500'
+        },
+        'amber': {
+            bg: 'bg-gradient-to-r from-amber-50 to-yellow-50',
+            border: 'border-amber-100',
+            icon: 'bg-gradient-to-r from-amber-500 to-yellow-500'
+        },
+        'rose': {
+            bg: 'bg-gradient-to-r from-rose-50 to-pink-50',
+            border: 'border-rose-100',
+            icon: 'bg-gradient-to-r from-rose-500 to-pink-500'
+        },
+        'teal': {
+            bg: 'bg-gradient-to-r from-teal-50 to-cyan-50',
+            border: 'border-teal-100',
+            icon: 'bg-gradient-to-r from-teal-500 to-cyan-500'
+        },
+        'pink': {
+            bg: 'bg-gradient-to-r from-pink-50 to-rose-50',
+            border: 'border-pink-100',
+            icon: 'bg-gradient-to-r from-pink-500 to-rose-500'
+        },
+        'indigo': {
+            bg: 'bg-gradient-to-r from-indigo-50 to-purple-50',
+            border: 'border-indigo-100',
+            icon: 'bg-gradient-to-r from-indigo-500 to-purple-500'
+        }
+    };
+    
+    return colorMap[color] || colorMap['purple'];
+}
+
+function editSubjectColor(subjectId) {
+    const subject = appData.focusSystem.subjects.find(s => s.id === subjectId);
+    if (!subject) return;
+    
+    const modalHTML = `
+        <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
+            <div class="bg-white rounded-2xl p-6 w-96 max-w-[90vw] shadow-2xl animate-fade-in">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">تغییر رنگ درس "${subject.name}"</h3>
+                    <button onclick="closeColorModal()" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div class="grid grid-cols-4 gap-3 mb-6">
+                    ${['purple', 'blue', 'emerald', 'amber', 'rose', 'teal', 'pink', 'indigo'].map(color => `
+                        <div onclick="selectColorForSubject(${subjectId}, '${color}')" 
+                             class="h-16 rounded-lg ${getTailwindColorClass(color).bg} border-2 ${subject.color === color ? 'border-gray-800 shadow-lg' : 'border-transparent'} cursor-pointer hover:scale-105 transition-all flex flex-col items-center justify-center group">
+                            <div class="w-8 h-8 rounded-full ${getTailwindColorClass(color).icon} mb-1"></div>
+                            <span class="text-xs text-gray-700 group-hover:font-medium">${getColorName(color)}</span>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="pt-4 border-t border-gray-200">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600">رنگ فعلی: ${getColorName(subject.color)}</span>
+                        <button onclick="closeColorModal()" class="px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 transition-all">
+                            بستن
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    const modalContainer = document.getElementById('modalContainer') || createModalContainer();
+    modalContainer.innerHTML = modalHTML;
+}
+
+function selectColorForSubject(subjectId, color) {
+    const subject = appData.focusSystem.subjects.find(s => s.id === subjectId);
+    if (subject) {
+        subject.color = color;
+        renderSubjectsList();
+        saveFocusData();
+        showNotification(`✅ رنگ درس "${subject.name}" به ${getColorName(color)} تغییر کرد`, 'success');
+        closeColorModal();
+    }
+}
+
+function closeColorModal() {
+    const modalContainer = document.getElementById('modalContainer');
+    if (modalContainer) {
+        modalContainer.innerHTML = '';
+    }
+}
+
+function createModalContainer() {
+    const container = document.createElement('div');
+    container.id = 'modalContainer';
+    container.className = 'z-50';
+    document.body.appendChild(container);
+    return container;
+}
+
+function deleteSubject(subjectId) {
+    if (confirm(`آیا از حذف این درس اطمینان دارید؟`)) {
+        const subject = appData.focusSystem.subjects.find(s => s.id === subjectId);
+        const subjectName = subject ? subject.name : 'این درس';
+        
+        appData.focusSystem.subjects = appData.focusSystem.subjects.filter(s => s.id !== subjectId);
+        renderSubjectsList();
+        updateStudySubjectDropdown();
+        saveFocusData();
+        showNotification(`✅ درس "${subjectName}" حذف شد`, 'success');
+    }
+}
+
+// ==================== STUDY TIMER ====================
+
+let studyPausedTime = 0;
+let studyPauseStartTime = 0;
+
+function startStudyTimer() {
+    if (studyTimerHandler) {
+        showNotification('⏱️ تایمر در حال اجراست', 'info');
+        return;
+    }
+    
+    const subject = document.getElementById('studySubject').value;
+    if (!subject) {
+        showNotification('لطفاً درس را انتخاب کنید', 'error');
+        return;
+    }
+    
+    appData.focusSystem.studyTimerRunning = true;
+    
+    // اگر از حالت پاز ادامه می‌دهیم
+    if (studyPauseStartTime > 0) {
+        const pauseDuration = Math.floor((Date.now() - studyPauseStartTime) / 1000);
+        studyPausedTime += pauseDuration;
+        studyPauseStartTime = 0;
+    }
+    
+    const startTime = Date.now() - (studyPausedTime * 1000);
+    
+    studyTimerHandler = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        appData.focusSystem.studyElapsedSeconds = elapsed;
+        
+        // هماهنگی با تایمر روزانه
+        appData.focusSystem.dailyTotalSeconds = elapsed;
+        
+        updateStudyTimerDisplay();
+        updateDailyTimerDisplay();
+        updateTreeProgress();
+        
+        // هر 30 دقیقه یک سیب اضافه کن
+        if (elapsed % 1800 === 0 && elapsed > 0) {
+            addAppleToTree();
         }
         
-        renderFocusPage();
+        saveFocusData();
     }, 1000);
     
-    showNotification(`🔬 تحقیق "${tech.name}" آغاز شد!`, 'success');
-    renderFocusPage();
-}
-
-// تکمیل تحقیق
-function completeResearch(techId) {
-    const tech = technologies.find(t => t.id === techId);
-    if (!tech) return;
+    // نمایش دکمه‌ها
+    const startBtn = document.getElementById('startStudyBtn');
+    const pauseBtn = document.getElementById('pauseStudyBtn');
+    const stopBtn = document.getElementById('stopStudyBtn');
     
-    gameState.technologies.push(techId);
-    gameState.researching = null;
-    gameState.researchProgress = 0;
+    if (startBtn) startBtn.classList.add('hidden');
+    if (pauseBtn) pauseBtn.classList.remove('hidden');
+    if (stopBtn) stopBtn.classList.remove('hidden');
     
-    // اعمال اثر تکنولوژی
-    if (tech.id === 1) { // آبیاری پیشرفته
-        gameState.city.productionRates.wood *= 1.25;
-        gameState.city.productionRates.stone *= 1.25;
-    } else if (tech.id === 2) { // مکانیزاسیون
-        // کاهش زمان ساخت ساختمان‌ها
-        buildings.forEach(b => {
-            b.buildTime = Math.floor(b.buildTime * 0.7);
-        });
+    // ذخیره اطلاعات جلسه
+    const topic = document.getElementById('studyTopic').value;
+    const notes = document.getElementById('studyNotes').value;
+    const goal = document.getElementById('studyGoal').value;
+    
+    if (!appData.focusSystem.currentSession) {
+        appData.focusSystem.currentSession = {
+            id: Date.now(),
+            subject: subject,
+            topic: topic || 'بدون موضوع',
+            notes: notes || '',
+            goal: goal || '',
+            startTime: new Date(),
+            timerId: studyTimerHandler
+        };
     }
     
-    // به‌روزرسانی مأموریت
-    updateMissionProgress(techId, 'research');
-    
-    showNotification(`🎓 تکنولوژی "${tech.name}" کشف شد!`, 'success');
-    renderFocusPage();
+    const goalText = goal ? ` (هدف: ${goal})` : '';
+    showNotification(`📚 مطالعه ${subject}${goalText} شروع شد`, 'success');
 }
 
-// ==================== توابع مأموریت‌ها ====================
-
-// مقداردهی اولیه مأموریت‌های روزانه
-function initializeDailyMissions() {
-    // پاک کردن مأموریت‌های قدیمی
-    gameState.activeMissions = [];
-    gameState.missionProgress = {};
+function pauseStudyTimer() {
+    if (!studyTimerHandler) {
+        showNotification('تایمری برای توقف وجود ندارد', 'warning');
+        return;
+    }
     
-    // انتخاب ۳ مأموریت تصادفی
-    const shuffledMissions = [...dailyMissions].sort(() => Math.random() - 0.5);
-    const selectedMissions = shuffledMissions.slice(0, 3);
+    clearInterval(studyTimerHandler);
+    studyTimerHandler = null;
+    studyPauseStartTime = Date.now();
     
-    selectedMissions.forEach(mission => {
-        gameState.activeMissions.push({
-            id: mission.id,
-            claimed: false
-        });
-        gameState.missionProgress[mission.id] = 0;
-    });
+    const startBtn = document.getElementById('startStudyBtn');
+    const pauseBtn = document.getElementById('pauseStudyBtn');
+    
+    if (startBtn) startBtn.classList.remove('hidden');
+    if (pauseBtn) pauseBtn.classList.add('hidden');
+    
+    showNotification('⏸️ مطالعه متوقف شد', 'warning');
 }
 
-// پیشرفت مأموریت‌ها
-function updateMissionProgress(targetId = null, type = 'focus') {
-    gameState.activeMissions.forEach(missionData => {
-        const mission = dailyMissions.find(m => m.id === missionData.id);
-        if (!mission || missionData.claimed) return;
+function stopStudyTimer() {
+    if (!appData.focusSystem.currentSession) {
+        showNotification('جلسه‌ای برای پایان دادن وجود ندارد', 'warning');
+        return;
+    }
+    
+    if (studyTimerHandler) {
+        clearInterval(studyTimerHandler);
+        studyTimerHandler = null;
+    }
+    
+    // ریست زمان پاز
+    studyPausedTime = 0;
+    studyPauseStartTime = 0;
+    
+    // محاسبه زمان مطالعه
+    const duration = appData.focusSystem.studyElapsedSeconds;
+    const hours = duration / 3600;
+    const minutes = Math.floor(duration / 60);
+    
+    // ثبت جلسه مطالعه
+    const session = appData.focusSystem.currentSession;
+    const endTime = new Date();
+    
+    const historyEntry = {
+        id: session.id,
+        subject: session.subject,
+        topic: session.topic,
+        notes: session.notes,
+        goal: session.goal,
+        startTime: session.startTime.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+        endTime: endTime.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+        date: endTime.toLocaleDateString('fa-IR'),
+        duration: duration,
+        durationFormatted: `${Math.floor(duration / 60)}:${(duration % 60).toString().padStart(2, '0')}`,
+        durationHours: (duration / 3600).toFixed(2)
+    };
+    
+    appData.focusSystem.studyHistory.unshift(historyEntry);
+    
+    // آپدیت آمار درس
+    updateSubjectStats(session.subject, duration);
+    
+    // آپدیت آمار کلی
+    appData.focusSystem.totalStudyHours += hours;
+    
+    // اضافه کردن سیب
+    if (duration >= 1800) {
+        const applesToAdd = Math.floor(duration / 1800);
+        for (let i = 0; i < applesToAdd; i++) {
+            addAppleToTree();
+        }
+    }
+    
+    // ریست نمایش دکمه‌ها
+    const startBtn = document.getElementById('startStudyBtn');
+    const pauseBtn = document.getElementById('pauseStudyBtn');
+    const stopBtn = document.getElementById('stopStudyBtn');
+    
+    if (startBtn) startBtn.classList.remove('hidden');
+    if (pauseBtn) pauseBtn.classList.add('hidden');
+    if (stopBtn) stopBtn.classList.add('hidden');
+    
+    document.getElementById('currentTimer').textContent = '00:00:00';
+    
+    // ریست داده‌های جلسه
+    appData.focusSystem.studyTimerRunning = false;
+    appData.focusSystem.studyStartTime = null;
+    appData.focusSystem.studyElapsedSeconds = 0;
+    appData.focusSystem.currentSession = null;
+    
+    // ریست فرم
+    document.getElementById('studyTopic').value = '';
+    document.getElementById('studyNotes').value = '';
+    document.getElementById('studyGoal').value = '';
+    
+    // آپدیت نمایش‌ها
+    updateStudyHistory();
+    renderSubjectsList();
+    updateTotalStats();
+    generateWeeklyDataFromHistory();
+    renderWeeklyChart();
+    saveFocusData();
+    
+    const goalText = session.goal ? ` (هدف: ${session.goal})` : '';
+    showNotification(`✅ مطالعه ${session.subject}${goalText} تکمیل شد! زمان: ${minutes} دقیقه`, 'success');
+}
+
+function updateStudyTimerDisplay() {
+    const elapsed = appData.focusSystem.studyElapsedSeconds;
+    const hours = Math.floor(elapsed / 3600);
+    const minutes = Math.floor((elapsed % 3600) / 60);
+    const seconds = elapsed % 60;
+    
+    const timerElement = document.getElementById('currentTimer');
+    if (timerElement) {
+        timerElement.textContent = 
+            `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+}
+
+// ==================== POMODORO TIMER ====================
+
+let pomodoroPausedTime = 0;
+let pomodoroPauseStartTime = 0;
+
+function startPomodoroTimer() {
+    if (pomodoroTimerHandler) {
+        showNotification('⏱️ پومودورو در حال اجراست', 'info');
+        return;
+    }
+    
+    appData.focusSystem.pomodoroTimerRunning = true;
+    
+    // اگر از حالت پاز ادامه می‌دهیم
+    if (pomodoroPauseStartTime > 0) {
+        const pauseDuration = Math.floor((Date.now() - pomodoroPauseStartTime) / 1000);
+        pomodoroPausedTime += pauseDuration;
+        pomodoroPauseStartTime = 0;
+    }
+    
+    const totalTime = appData.focusSystem.pomodoroState === 'focus' ? 
+        appData.focusSystem.pomodoroFocusMinutes * 60 : 
+        appData.focusSystem.pomodoroBreakMinutes * 60;
+    
+    const startTime = Date.now() - (pomodoroPausedTime * 1000);
+    
+    pomodoroTimerHandler = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        appData.focusSystem.pomodoroRemainingSeconds = Math.max(0, totalTime - elapsed);
         
-        let progress = gameState.missionProgress[mission.id] || 0;
+        // هماهنگی با تایمر روزانه
+        appData.focusSystem.dailyTotalSeconds = elapsed;
         
-        switch(mission.type) {
-            case 'focus':
-                // هر دقیقه ۶۰ ثانیه به پیشرفت اضافه می‌شود
-                progress = Math.min(progress + 60, mission.target);
-                break;
-                
-            case 'build':
-                if (type === 'build' && targetId === mission.target) {
-                    progress = mission.target;
-                }
-                break;
-                
-            case 'research':
-                if (type === 'research') {
-                    progress = mission.target;
-                }
-                break;
+        updatePomodoroTimerDisplay();
+        updateDailyTimerDisplay();
+        updateTreeProgress();
+        
+        if (appData.focusSystem.pomodoroRemainingSeconds <= 0) {
+            completePomodoroSession();
         }
         
-        gameState.missionProgress[mission.id] = progress;
-        
-        // اگر مأموریت تکمیل شد
-        if (progress >= mission.target && !missionData.claimed) {
-            showNotification(`✅ مأموریت "${mission.title}" تکمیل شد!`, 'success');
-        }
-    });
+        saveFocusData();
+    }, 1000);
     
-    renderFocusPage();
+    const startBtn = document.getElementById('startPomodoroBtn');
+    const pauseBtn = document.getElementById('pausePomodoroBtn');
+    const skipBtn = document.getElementById('skipPomodoroBtn');
+    
+    if (startBtn) startBtn.classList.add('hidden');
+    if (pauseBtn) pauseBtn.classList.remove('hidden');
+    if (skipBtn) skipBtn.classList.remove('hidden');
+    
+    const status = appData.focusSystem.pomodoroState === 'focus' ? 'تمرکز' : 'استراحت';
+    showNotification(`⏱️ جلسه ${status} پومودورو شروع شد`, 'success');
 }
 
-// دریافت جایزه مأموریت
-function claimMissionReward(missionId) {
-    const mission = dailyMissions.find(m => m.id === missionId);
-    const missionData = gameState.activeMissions.find(m => m.id === missionId);
+function pausePomodoroTimer() {
+    if (!pomodoroTimerHandler) {
+        showNotification('پومودورویی برای توقف وجود ندارد', 'warning');
+        return;
+    }
     
-    if (!mission || !missionData || missionData.claimed) return;
+    clearInterval(pomodoroTimerHandler);
+    pomodoroTimerHandler = null;
+    pomodoroPauseStartTime = Date.now();
     
-    // اعمال جایزه
-    Object.keys(mission.reward).forEach(resource => {
-        gameState.city.resources[resource] += mission.reward[resource];
-    });
+    const startBtn = document.getElementById('startPomodoroBtn');
+    const pauseBtn = document.getElementById('pausePomodoroBtn');
     
-    // علامت‌گذاری به عنوان دریافت شده
-    missionData.claimed = true;
+    if (startBtn) startBtn.classList.remove('hidden');
+    if (pauseBtn) pauseBtn.classList.add('hidden');
     
-    // اگر قابل تکرار نیست، حذفش کن
-    if (!mission.repeatable) {
-        const index = gameState.activeMissions.findIndex(m => m.id === missionId);
-        if (index !== -1) {
-            gameState.activeMissions.splice(index, 1);
+    showNotification('⏸️ پومودورو متوقف شد', 'warning');
+}
+
+function skipPomodoroSession() {
+    if (pomodoroTimerHandler) {
+        clearInterval(pomodoroTimerHandler);
+        pomodoroTimerHandler = null;
+    }
+    
+    // ریست زمان پاز
+    pomodoroPausedTime = 0;
+    pomodoroPauseStartTime = 0;
+    
+    appData.focusSystem.pomodoroState = appData.focusSystem.pomodoroState === 'focus' ? 'break' : 'focus';
+    
+    const startBtn = document.getElementById('startPomodoroBtn');
+    const pauseBtn = document.getElementById('pausePomodoroBtn');
+    const skipBtn = document.getElementById('skipPomodoroBtn');
+    
+    if (startBtn) startBtn.classList.remove('hidden');
+    if (pauseBtn) pauseBtn.classList.add('hidden');
+    if (skipBtn) skipBtn.classList.add('hidden');
+    
+    updatePomodoroTimerDisplay();
+    updatePomodoroStatus();
+    
+    showNotification('⏭️ جلسه پومودورو رد شد', 'info');
+}
+
+function completePomodoroSession() {
+    if (pomodoroTimerHandler) {
+        clearInterval(pomodoroTimerHandler);
+        pomodoroTimerHandler = null;
+    }
+    
+    // ریست زمان پاز
+    pomodoroPausedTime = 0;
+    pomodoroPauseStartTime = 0;
+    
+    appData.focusSystem.pomodoroSessionsCompleted++;
+    
+    const startBtn = document.getElementById('startPomodoroBtn');
+    const pauseBtn = document.getElementById('pausePomodoroBtn');
+    const skipBtn = document.getElementById('skipPomodoroBtn');
+    
+    if (startBtn) startBtn.classList.remove('hidden');
+    if (pauseBtn) pauseBtn.classList.add('hidden');
+    if (skipBtn) skipBtn.classList.add('hidden');
+    
+    if (appData.focusSystem.pomodoroState === 'focus') {
+        appData.focusSystem.pomodoroState = 'break';
+        showNotification('🎉 جلسه تمرکز پومودورو کامل شد! زمان استراحت شروع می‌شود', 'success');
+        
+        addAppleToTree();
+        
+        appData.focusSystem.pomodoroRemainingSeconds = appData.focusSystem.pomodoroBreakMinutes * 60;
+    } else {
+        showNotification('✅ استراحت شما کامل شد! آماده جلسه تمرکز بعدی هستید', 'info');
+        appData.focusSystem.pomodoroState = 'focus';
+        
+        appData.focusSystem.pomodoroRemainingSeconds = appData.focusSystem.pomodoroFocusMinutes * 60;
+    }
+    
+    appData.focusSystem.pomodoroTimerRunning = false;
+    
+    updatePomodoroTimerDisplay();
+    updatePomodoroStatus();
+    saveFocusData();
+}
+
+function updatePomodoroTimerDisplay() {
+    const remaining = appData.focusSystem.pomodoroRemainingSeconds;
+    const minutes = Math.floor(remaining / 60);
+    const seconds = remaining % 60;
+    
+    const timerElement = document.getElementById('pomodoroTimer');
+    if (timerElement) {
+        timerElement.textContent = 
+            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+}
+
+function updatePomodoroStatus() {
+    const statusElement = document.getElementById('pomodoroStatus');
+    if (statusElement) {
+        statusElement.textContent = appData.focusSystem.pomodoroState === 'focus' ? 'زمان تمرکز' : 'زمان استراحت';
+    }
+}
+
+function adjustPomodoroTime(type, change) {
+    if (type === 'focus') {
+        appData.focusSystem.pomodoroFocusMinutes = Math.max(5, Math.min(60, appData.focusSystem.pomodoroFocusMinutes + change));
+        const displayElement = document.getElementById('focusTimeDisplay');
+        if (displayElement) displayElement.textContent = appData.focusSystem.pomodoroFocusMinutes;
+    } else {
+        appData.focusSystem.pomodoroBreakMinutes = Math.max(1, Math.min(30, appData.focusSystem.pomodoroBreakMinutes + change));
+        const displayElement = document.getElementById('breakTimeDisplay');
+        if (displayElement) displayElement.textContent = appData.focusSystem.pomodoroBreakMinutes;
+    }
+    
+    if (!appData.focusSystem.pomodoroTimerRunning && appData.focusSystem.pomodoroState === 'focus') {
+        appData.focusSystem.pomodoroRemainingSeconds = appData.focusSystem.pomodoroFocusMinutes * 60;
+        updatePomodoroTimerDisplay();
+    }
+    
+    saveFocusData();
+}
+
+// ==================== DAILY TIMER DISPLAY ====================
+
+function updateDailyTimerDisplay() {
+    const totalSeconds = appData.focusSystem.dailyTotalSeconds;
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    
+    const timerElement = document.getElementById('dailyTotalTimer');
+    if (timerElement) {
+        timerElement.textContent = 
+            `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    
+    const dailyProgress = Math.min(100, (totalSeconds / (8 * 3600)) * 100);
+    const progressBar = document.getElementById('dailyProgressBar');
+    const progressText = document.getElementById('dailyProgressText');
+    
+    if (progressBar) progressBar.style.width = `${dailyProgress}%`;
+    if (progressText) progressText.textContent = `${Math.floor(dailyProgress)}٪`;
+}
+
+// ==================== TREE SYSTEM ====================
+
+function renderTree() {
+    const applesContainer = document.getElementById('applesContainer');
+    const treeEmptyMessage = document.getElementById('treeEmptyMessage');
+    
+    if (!applesContainer || !treeEmptyMessage) return;
+    
+    applesContainer.innerHTML = '';
+    
+    // اضافه کردن SVG درخت
+    const treeSVG = document.createElement('div');
+    treeSVG.className = 'absolute inset-0 flex items-center justify-center';
+    treeSVG.innerHTML = `
+        <div class="relative w-64 h-64">
+            <!-- تنه درخت -->
+            <div class="absolute w-12 h-32 bg-gradient-to-r from-yellow-900 to-yellow-800 rounded-lg left-1/2 transform -translate-x-1/2 bottom-0"></div>
+            
+            <!-- شاخ و برگ ها -->
+            <div class="absolute w-48 h-48 bg-gradient-to-r from-emerald-600 to-green-500 rounded-full left-1/2 top-8 transform -translate-x-1/2"></div>
+            <div class="absolute w-40 h-40 bg-gradient-to-r from-emerald-700 to-green-600 rounded-full left-1/4 top-12"></div>
+            <div class="absolute w-40 h-40 bg-gradient-to-r from-emerald-700 to-green-600 rounded-full right-1/4 top-12"></div>
+            
+            <!-- گلدان -->
+            <div class="absolute w-20 h-8 bg-gradient-to-r from-orange-700 to-orange-600 rounded-lg left-1/2 transform -translate-x-1/2 -bottom-2"></div>
+        </div>
+    `;
+    applesContainer.appendChild(treeSVG);
+    
+    // محاسبه تعداد سیب‌های قابل نمایش
+    const applesToShow = Math.floor(appData.focusSystem.dailyTotalSeconds / 3600);
+    const collectedApples = appData.focusSystem.applesCollected;
+    
+    if (applesToShow > 0 || collectedApples > 0) {
+        treeEmptyMessage.classList.add('hidden');
+        
+        // اضافه کردن سیب‌های درختی (فقط یکبار مصرف)
+        for (let i = 0; i < applesToShow; i++) {
+            const apple = document.createElement('div');
+            apple.className = 'apple absolute cursor-pointer z-20 animate-bounce';
+            apple.style.left = `${40 + (i * 20) % 50}%`;
+            apple.style.top = `${30 + (i * 15) % 40}%`;
+            apple.style.fontSize = '2rem';
+            apple.innerHTML = '🍎';
+            apple.title = 'سیب دانش - کلیک برای جمع‌آوری';
+            apple.onclick = () => {
+                collectSingleApple(apple);
+            };
+            applesContainer.appendChild(apple);
+        }
+        
+        // نمایش سیب‌های جمع‌آوری شده
+        if (collectedApples > 0) {
+            const collectedApple = document.createElement('div');
+            collectedApple.className = 'collected-apple absolute z-30 animate-pulse';
+            collectedApple.style.left = '80%';
+            collectedApple.style.top = '10%';
+            collectedApple.style.fontSize = '1.8rem';
+            collectedApple.style.fontWeight = 'bold';
+            collectedApple.style.background = 'linear-gradient(135deg, #fbbf24, #f59e0b)';
+            collectedApple.style.padding = '8px 16px';
+            collectedApple.style.borderRadius = '25px';
+            collectedApple.style.boxShadow = '0 6px 20px rgba(245, 158, 11, 0.4)';
+            collectedApple.style.border = '3px solid #d97706';
+            collectedApple.innerHTML = `🍎×${collectedApples}`;
+            collectedApple.title = `${collectedApples} سیب جمع‌آوری شده`;
+            applesContainer.appendChild(collectedApple);
         }
     } else {
-        // ریست پیشرفت
-        gameState.missionProgress[missionId] = 0;
+        treeEmptyMessage.classList.remove('hidden');
     }
     
-    showNotification(`🎁 جایزه مأموریت "${mission.title}" دریافت شد!`, 'success');
-    renderFocusPage();
+    updateAppleStats();
 }
 
-// ==================== نمودار هفتگی ====================
-
-// آپدیت نمودار هفتگی
-function updateWeeklyProgress(seconds = 0) {
-    // اگر زمان داده نشده، از تایمر فعلی بگیر
-    if (seconds === 0 && appData.timerState.elapsedSeconds) {
-        seconds = appData.timerState.elapsedSeconds;
-    }
+function collectSingleApple(appleElement) {
+    appData.focusSystem.applesCollected++;
     
-    const minutes = seconds / 60;
+    // انیمیشن جمع‌آوری
+    appleElement.style.transition = 'all 0.5s ease-out';
+    appleElement.style.transform = 'scale(0) rotate(360deg)';
+    appleElement.style.opacity = '0';
     
-    // آپدیت روز جاری
-    gameState.weeklyProgress.days[gameState.weeklyProgress.currentDayIndex] += minutes;
-    
-    // بررسی تغییر روز
-    const now = new Date();
-    const todayIndex = now.getDay() === 6 ? 0 : now.getDay() + 1;
-    
-    if (todayIndex !== gameState.weeklyProgress.currentDayIndex) {
-        gameState.weeklyProgress.currentDayIndex = todayIndex;
-        gameState.weeklyProgress.lastUpdate = now.getTime();
-        
-        // ریست آمار روزانه
-        gameState.focusStats.todaySeconds = 0;
-        
-        // ایجاد مأموریت‌های جدید روزانه
-        if (now.getHours() >= 0 && now.getHours() < 6) {
-            initializeDailyMissions();
+    setTimeout(() => {
+        if (appleElement.parentNode) {
+            appleElement.parentNode.removeChild(appleElement);
         }
+        updateAppleStats();
+        showNotification(`🍎 یک سیب جمع‌آوری شد! (جمع: ${appData.focusSystem.applesCollected})`, 'success');
+        saveFocusData();
+        
+        // ریندر مجدد درخت
+        renderTree();
+    }, 500);
+}
+
+function addAppleToTree() {
+    appData.focusSystem.applesCollected++;
+    updateAppleStats();
+    showNotification(`🍎 یک سیب به درخت دانش شما اضافه شد! (جمع: ${appData.focusSystem.applesCollected})`, 'success');
+    saveFocusData();
+    
+    // ریندر مجدد برای نمایش سیب جدید
+    renderTree();
+}
+
+function collectAllApples() {
+    if (appData.focusSystem.applesCollected === 0) {
+        showNotification('هنوز سیبی برای جمع‌آوری ندارید!', 'warning');
+        return;
     }
     
+    const collected = appData.focusSystem.applesCollected;
+    appData.focusSystem.applesStored += collected;
+    appData.focusSystem.applesCollected = 0;
+    
+    updateAppleStats();
+    renderTree();
+    showNotification(`✅ ${collected} سیب جمع‌آوری شد! مجموع سیب‌های ذخیره شده: ${appData.focusSystem.applesStored}`, 'success');
+    saveFocusData();
+}
+
+function updateAppleStats() {
+    const appleCountElement = document.getElementById('appleCount');
+    const collectedApplesElement = document.getElementById('collectedApples');
+    const storedApplesElement = document.getElementById('storedApples');
+    const nextAppleTimeElement = document.getElementById('nextAppleTime');
+    
+    const applesToShow = Math.floor(appData.focusSystem.dailyTotalSeconds / 3600);
+    
+    if (appleCountElement) appleCountElement.textContent = applesToShow;
+    if (collectedApplesElement) collectedApplesElement.textContent = appData.focusSystem.applesCollected;
+    if (storedApplesElement) storedApplesElement.textContent = appData.focusSystem.applesStored;
+    
+    if (nextAppleTimeElement) {
+        const secondsToNextApple = 3600 - (appData.focusSystem.dailyTotalSeconds % 3600);
+        const minutesToNextApple = Math.ceil(secondsToNextApple / 60);
+        const seconds = secondsToNextApple % 60;
+        nextAppleTimeElement.textContent = `${minutesToNextApple.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+}
+
+function updateTreeProgress() {
+    renderTree();
+}
+
+// ==================== SUBJECT STATS ====================
+
+function updateSubjectStats(subjectName, durationSeconds) {
+    const subject = appData.focusSystem.subjects.find(s => s.name === subjectName);
+    if (subject) {
+        const hours = durationSeconds / 3600;
+        subject.todayHours += hours;
+        subject.weeklyHours += hours;
+        subject.totalHours += hours;
+    }
+}
+
+// ==================== STUDY HISTORY ====================
+
+function updateStudyHistory() {
+    const studyHistory = document.getElementById('studyHistory');
+    if (!studyHistory) return;
+    
+    studyHistory.innerHTML = '';
+    
+    const today = new Date().toLocaleDateString('fa-IR');
+    const todayHistory = appData.focusSystem.studyHistory.filter(entry => entry.date === today);
+    
+    if (todayHistory.length === 0) {
+        studyHistory.innerHTML = `
+            <div class="text-center py-4 text-gray-500">
+                <div class="text-3xl mb-2">📝</div>
+                <p>هنوز مطالعه‌ای برای امروز ثبت نشده است</p>
+                <p class="text-sm mt-2">شروع به مطالعه کنید تا اینجا نمایش داده شود</p>
+            </div>
+        `;
+        document.getElementById('todayTotal').textContent = '۰ ساعت';
+        return;
+    }
+    
+    let todayTotalMinutes = 0;
+    
+    todayHistory.forEach(entry => {
+        todayTotalMinutes += entry.duration / 60;
+        
+        const historyItem = document.createElement('div');
+        historyItem.className = 'flex items-center justify-between p-3 border-b border-gray-100 hover:bg-gray-50 rounded-lg transition-all';
+        historyItem.innerHTML = `
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 flex items-center justify-center text-purple-600 text-sm font-bold">
+                    ${entry.subject.charAt(0)}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-gray-800 truncate">${entry.subject} - ${entry.topic}</div>
+                    <div class="text-xs text-gray-600">${entry.startTime} - ${entry.endTime}</div>
+                    ${entry.goal ? `<div class="text-xs text-emerald-600 mt-1"><i class="fas fa-bullseye ml-1"></i> ${entry.goal}</div>` : ''}
+                </div>
+            </div>
+            <div class="text-sm text-gray-800 font-medium bg-gray-100 px-3 py-1 rounded-lg">${entry.durationFormatted}</div>
+        `;
+        studyHistory.appendChild(historyItem);
+    });
+    
+    const todayTotalHours = (todayTotalMinutes / 60).toFixed(1);
+    document.getElementById('todayTotal').textContent = `${todayTotalHours} ساعت`;
+}
+
+// ==================== WEEKLY CHART ====================
+
+function refreshChart() {
+    generateWeeklyDataFromHistory();
+    renderWeeklyChart();
+    updateWeeklyStats();
+    showNotification('📊 نمودار هفتگی بروزرسانی شد', 'success');
+}
+
+function generateWeeklyDataFromHistory() {
+    const days = [0, 0, 0, 0, 0, 0, 0];
+    
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    
+    appData.focusSystem.studyHistory.forEach(entry => {
+        try {
+            const entryDate = new Date(entry.startTime);
+            const dayIndex = (entryDate.getDay() + 1) % 7;
+            
+            if (dayIndex >= 0 && dayIndex < 7) {
+                days[dayIndex] += parseFloat(entry.durationHours || 0);
+            }
+        } catch (e) {
+            console.warn('⚠️ Error parsing date:', e);
+        }
+    });
+    
+    if (days.every(h => h === 0)) {
+        days.forEach((_, i) => {
+            days[i] = Math.random() * 3 + 1;
+        });
+    }
+    
+    appData.focusSystem.weeklyData = days.map(hours => parseFloat(hours.toFixed(1)));
+}
+
+function renderWeeklyChart() {
+    const ctx = document.getElementById('weeklyChart');
+    if (!ctx) return;
+    
+    const days = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
+    
+    if (window.weeklyChartInstance) {
+        window.weeklyChartInstance.destroy();
+    }
+    
+    window.weeklyChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: days,
+            datasets: [{
+                label: 'ساعت مطالعه',
+                data: appData.focusSystem.weeklyData,
+                backgroundColor: [
+                    'rgba(147, 51, 234, 0.7)',
+                    'rgba(59, 130, 246, 0.7)',
+                    'rgba(16, 185, 129, 0.7)',
+                    'rgba(245, 158, 11, 0.7)',
+                    'rgba(239, 68, 68, 0.7)',
+                    'rgba(6, 182, 212, 0.7)',
+                    'rgba(236, 72, 153, 0.7)'
+                ],
+                borderColor: [
+                    'rgb(147, 51, 234)',
+                    'rgb(59, 130, 246)',
+                    'rgb(16, 185, 129)',
+                    'rgb(245, 158, 11)',
+                    'rgb(239, 68, 68)',
+                    'rgb(6, 182, 212)',
+                    'rgb(236, 72, 153)'
+                ],
+                borderWidth: 1,
+                borderRadius: 8,
+                borderSkipped: false,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.parsed.y.toFixed(1)} ساعت`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'ساعت'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value + 'h';
+                        }
+                    }
+                },
+                x: {
+                    ticks: {
+                        autoSkip: false,
+                        maxRotation: 0
+                    }
+                }
+            }
+        }
+    });
+    
+    updateWeeklyStats();
+}
+
+function updateWeeklyStats() {
+    const weeklyTotal = appData.focusSystem.weeklyData.reduce((a, b) => a + b, 0);
+    const dailyAverage = weeklyTotal / 7;
+    
+    const dailyAverageElement = document.getElementById('dailyAverage');
+    const weeklyTotalElement = document.getElementById('weeklyTotal');
+    
+    if (dailyAverageElement) dailyAverageElement.textContent = `${dailyAverage.toFixed(1)} ساعت`;
+    if (weeklyTotalElement) weeklyTotalElement.textContent = `${weeklyTotal.toFixed(1)} ساعت`;
+}
+
+// ==================== TOTAL STATS ====================
+
+function updateTotalStats() {
+    const totalStudyTime = document.getElementById('totalStudyTime');
+    const streakDays = document.getElementById('streakDays');
+    const totalApples = document.getElementById('totalApples');
+    const activeSubjects = document.getElementById('activeSubjects');
+    
+    if (totalStudyTime) totalStudyTime.textContent = `${appData.focusSystem.totalStudyHours.toFixed(1)} ساعت`;
+    if (streakDays) streakDays.textContent = `${appData.focusSystem.streakDays} روز`;
+    if (totalApples) totalApples.textContent = appData.focusSystem.applesCollected + appData.focusSystem.applesStored;
+    if (activeSubjects) activeSubjects.textContent = appData.focusSystem.subjects.length;
+}
+
+// ==================== MODE SWITCHING ====================
+
+function switchMode(mode) {
+    const stopwatchMode = document.getElementById('stopwatchMode');
+    const pomodoroMode = document.getElementById('pomodoroMode');
+    
+    if (!stopwatchMode || !pomodoroMode) return;
+    
+    if (mode === 'stopwatch') {
+        stopwatchMode.classList.remove('hidden');
+        pomodoroMode.classList.add('hidden');
+        showNotification('🔄 تغییر به حالت تایمر معمولی', 'info');
+    } else {
+        stopwatchMode.classList.add('hidden');
+        pomodoroMode.classList.remove('hidden');
+        showNotification('🔄 تغییر به حالت پومودورو', 'info');
+    }
+}
+
+// ==================== SETUP EVENT LISTENERS ====================
+
+function setupFocusEventListeners() {
+    document.getElementById('startStudyBtn')?.addEventListener('click', startStudyTimer);
+    document.getElementById('pauseStudyBtn')?.addEventListener('click', pauseStudyTimer);
+    document.getElementById('stopStudyBtn')?.addEventListener('click', stopStudyTimer);
+    
+    document.getElementById('startPomodoroBtn')?.addEventListener('click', startPomodoroTimer);
+    document.getElementById('pausePomodoroBtn')?.addEventListener('click', pausePomodoroTimer);
+    document.getElementById('skipPomodoroBtn')?.addEventListener('click', skipPomodoroSession);
+    
+    document.getElementById('increaseFocusTime')?.addEventListener('click', () => adjustPomodoroTime('focus', 5));
+    document.getElementById('decreaseFocusTime')?.addEventListener('click', () => adjustPomodoroTime('focus', -5));
+    document.getElementById('increaseBreakTime')?.addEventListener('click', () => adjustPomodoroTime('break', 1));
+    document.getElementById('decreaseBreakTime')?.addEventListener('click', () => adjustPomodoroTime('break', -1));
+    
+    document.getElementById('collectApplesBtn')?.addEventListener('click', collectAllApples);
+    
+    document.getElementById('refreshChartBtn')?.addEventListener('click', refreshChart);
+    
+    document.getElementById('switchToStopwatch')?.addEventListener('click', () => switchMode('stopwatch'));
+    document.getElementById('switchToPomodoro')?.addEventListener('click', () => switchMode('pomodoro'));
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(() => {
+            renderStudyForm();
+            setupSubjectsManagement();
+        }, 100);
+    });
+}
+
+// ==================== UPDATE ALL DISPLAYS ====================
+
+function updateAllDisplays() {
+    updateDailyTimerDisplay();
+    updateStudyTimerDisplay();
+    updatePomodoroTimerDisplay();
+    updatePomodoroStatus();
+    renderTree();
+    renderStudyForm();
+    setupSubjectsManagement();
+    renderSubjectsList();
+    updateStudySubjectDropdown();
+    updateStudyHistory();
+    updateTotalStats();
+    generateWeeklyDataFromHistory();
     renderWeeklyChart();
 }
 
-// ==================== توابع کمکی ====================
+// ==================== EXPORT FUNCTIONS ====================
 
-// آپدیت نمایش تایمر (شمارنده رو به بالا)
-function updateTimerDisplay() {
-    const timerDisplay = document.getElementById('timerDisplay');
-    if (!timerDisplay) return;
-    
-    const seconds = appData.timerState.elapsedSeconds || 0;
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const remainingSeconds = seconds % 60;
-    
-    if (hours > 0) {
-        timerDisplay.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-    } else {
-        timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+window.initializeFocusMode = initializeFocusMode;
+window.startStudyTimer = startStudyTimer;
+window.pauseStudyTimer = pauseStudyTimer;
+window.stopStudyTimer = stopStudyTimer;
+window.startPomodoroTimer = startPomodoroTimer;
+window.pausePomodoroTimer = pausePomodoroTimer;
+window.skipPomodoroSession = skipPomodoroSession;
+window.switchMode = switchMode;
+window.adjustPomodoroTime = adjustPomodoroTime;
+window.saveManagedSubject = saveManagedSubject;
+window.editSubjectColor = editSubjectColor;
+window.selectColorForSubject = selectColorForSubject;
+window.closeColorModal = closeColorModal;
+window.deleteSubject = deleteSubject;
+window.collectAllApples = collectAllApples;
+window.refreshChart = refreshChart;
+window.renderStudyForm = renderStudyForm;
+window.setupSubjectsManagement = setupSubjectsManagement;
+window.collectSingleApple = collectSingleApple;
+
+setInterval(() => {
+    if (appData.focusSystem.studyTimerRunning || appData.focusSystem.pomodoroTimerRunning) {
+        saveFocusData();
     }
-    
-    // افکت ویژه بعد از ۵ دقیقه
-    if (seconds >= 300) {
-        timerDisplay.classList.add('text-green-600', 'font-bold');
-    } else {
-        timerDisplay.classList.remove('text-green-600', 'font-bold');
-    }
-}
+}, 30000);
 
-// آپدیت کنترل‌های تایمر
-function updateTimerControls() {
-    const startBtn = document.getElementById('startTimer');
-    const pauseBtn = document.getElementById('pauseTimer');
-    const continueBtn = document.getElementById('continueTimer');
-    const endBtn = document.getElementById('endFocusBtn') || createEndFocusButton();
-    
-    if (startBtn) startBtn.disabled = true;
-    if (pauseBtn) pauseBtn.disabled = false;
-    if (continueBtn) continueBtn.style.display = 'none';
-    if (pauseBtn) pauseBtn.style.display = 'inline-flex';
-    if (endBtn) endBtn.disabled = false;
-}
+// ==================== INITIALIZATION ====================
 
-// ایجاد دکمه پایان فوکوس
-function createEndFocusButton() {
-    const timerActions = document.querySelector('.timer-actions');
-    if (!timerActions) return null;
-    
-    const endBtn = document.createElement('button');
-    endBtn.id = 'endFocusBtn';
-    endBtn.className = 'px-8 py-3 bg-red-500 text-white rounded-full hover:bg-red-600 transition-all font-bold shadow-lg hover:shadow-xl';
-    endBtn.innerHTML = '<i class="fas fa-stop ml-2"></i> پایان فوکوس';
-    endBtn.addEventListener('click', endFocusSession);
-    
-    timerActions.appendChild(endBtn);
-    return endBtn;
-}
-
-// ریست تایمر
-function resetTimer() {
-    clearInterval(appData.timerState.timerInterval);
-    
-    appData.timerState.isRunning = false;
-    appData.timerState.isPaused = false;
-    appData.timerState.timerInterval = null;
-    appData.timerState.elapsedSeconds = 0;
-    appData.timerState.startTime = null;
-    appData.timerState.pauseTime = null;
-    
-    const startBtn = document.getElementById('startTimer');
-    const pauseBtn = document.getElementById('pauseTimer');
-    const continueBtn = document.getElementById('continueTimer');
-    const endBtn = document.getElementById('endFocusBtn');
-    
-    if (startBtn) startBtn.disabled = false;
-    if (pauseBtn) {
-        pauseBtn.disabled = true;
-        pauseBtn.style.display = 'inline-flex';
-    }
-    if (continueBtn) continueBtn.style.display = 'none';
-    if (endBtn) endBtn.disabled = true;
-    
-    updateTimerDisplay();
-}
-
-// تغییر حالت فوکوس
-function changeFocusMode(mode) {
-    appData.timerState.mode = mode;
-    
-    // حذف active از همه دکمه‌ها
-    document.querySelectorAll('.focus-mode-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    // اضافه کردن active به دکمه انتخاب شده
-    const activeBtn = document.getElementById(`focus${mode.charAt(0).toUpperCase() + mode.slice(1)}`);
-    if (activeBtn) activeBtn.classList.add('active');
-    
-    // تغییر عنوان
-    const modeTitles = {
-        normal: '🌱 حالت عادی',
-        pomodoro: '🍅 پومودورو',
-        challenge: '⚔️ چالش ویژه'
-    };
-    
-    const titleElement = document.getElementById('focusModeTitle');
-    if (titleElement) {
-        titleElement.textContent = modeTitles[mode] || 'حالت فوکوس';
-    }
-    
-    // تنظیم زمان‌ها فقط برای حالت‌های محدود
-    if (mode === 'pomodoro') {
-        appData.timerState.focusMinutes = 25;
-        appData.timerState.breakMinutes = 5;
-        document.getElementById('focusTime').value = 25;
-        document.getElementById('breakTime').value = 5;
-    } else if (mode === 'challenge') {
-        appData.timerState.focusMinutes = 15;
-        appData.timerState.breakMinutes = 3;
-        document.getElementById('focusTime').value = 15;
-        document.getElementById('breakTime').value = 3;
-    }
-    
-    resetTimer();
-}
-
-// تنظیم زمان‌ها فقط برای پومودورو و چالش
-function setFocusTime() {
-    if (appData.timerState.mode === 'normal') return;
-    
-    const focusTime = parseInt(document.getElementById('focusTime').value);
-    const breakTime = parseInt(document.getElementById('breakTime').value);
-    
-    if (focusTime >= 5 && focusTime <= 120) {
-        appData.timerState.focusMinutes = focusTime;
-    }
-    
-    if (breakTime >= 1 && breakTime <= 30) {
-        appData.timerState.breakMinutes = breakTime;
-    }
-    
-    resetTimer();
-}
-
-// مقداردهی اولیه
-function initializeFocusMode() {
-    // دکمه‌های حالت
-    document.getElementById('focusNormal')?.addEventListener('click', () => changeFocusMode('normal'));
-    document.getElementById('focusPomodoro')?.addEventListener('click', () => changeFocusMode('pomodoro'));
-    document.getElementById('focusChallenge')?.addEventListener('click', () => changeFocusMode('challenge'));
-    
-    // دکمه‌های تایمر
-    document.getElementById('startTimer')?.addEventListener('click', startTimer);
-    document.getElementById('pauseTimer')?.addEventListener('click', pauseTimer);
-    document.getElementById('continueTimer')?.addEventListener('click', continueTimer);
-    
-    // تنظیمات زمان فقط برای حالت‌های محدود
-    const focusTimeInput = document.getElementById('focusTime');
-    const breakTimeInput = document.getElementById('breakTime');
-    
-    if (focusTimeInput && breakTimeInput) {
-        focusTimeInput.addEventListener('change', setFocusTime);
-        breakTimeInput.addEventListener('change', setFocusTime);
-        
-        // غیرفعال کردن برای حالت عادی
-        if (appData.timerState.mode === 'normal') {
-            focusTimeInput.disabled = true;
-            breakTimeInput.disabled = true;
-        }
-    }
-    
-    // مقداردهی اولیه
-    changeFocusMode('normal');
-    
-    // بارگذاری داده‌های ذخیره شده
-    loadGameState();
-}
-
-// بارگذاری حالت بازی از localStorage
-function loadGameState() {
-    try {
-        const saved = localStorage.getItem('focusGameState');
-        if (saved) {
-            const parsed = JSON.parse(saved);
-            // فقط برخی داده‌ها را بارگذاری کن
-            gameState.city.resources = parsed.city?.resources || gameState.city.resources;
-            gameState.city.buildings = parsed.city?.buildings || gameState.city.buildings;
-            gameState.weeklyProgress = parsed.weeklyProgress || gameState.weeklyProgress;
-            gameState.focusStats = parsed.focusStats || gameState.focusStats;
-        }
-    } catch (e) {
-        console.log('خطا در بارگذاری ذخیره‌ها:', e);
-    }
-}
-
-// ذخیره حالت بازی در localStorage
-function saveGameState() {
-    try {
-        localStorage.setItem('focusGameState', JSON.stringify(gameState));
-    } catch (e) {
-        console.log('خطا در ذخیره:', e);
-    }
-}
-
-// ذخیره خودکار هر ۳۰ ثانیه
-setInterval(saveGameState, 30000);
-
-// اجرای مقداردهی اولیه
 document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(() => {
-        initializeFocusMode();
-        renderFocusPage();
-    }, 100);
+    const focusModePage = document.getElementById('focusMode');
+    if (focusModePage && !focusModePage.classList.contains('hidden')) {
+        setTimeout(() => {
+            initializeFocusMode();
+        }, 100);
+    }
 });
+
+console.log('📚 Focus Mode System Loaded Successfully');
