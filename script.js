@@ -2455,7 +2455,8 @@ function deleteSubject(subjectId) {
 
 // ==================== STUDY TIMER ====================
 
-let studyPausedTime = 0;
+let studyStartTime = 0;
+let studyTotalElapsedSeconds = 0;
 let studyPauseStartTime = 0;
 
 function startStudyTimer() {
@@ -2472,18 +2473,22 @@ function startStudyTimer() {
     
     appData.focusSystem.studyTimerRunning = true;
     
-    // اگر از حالت پاز ادامه می‌دهیم
+    // اگر قبلاً پاز شده بود، زمان پاز را محاسبه کن
     if (studyPauseStartTime > 0) {
         const pauseDuration = Math.floor((Date.now() - studyPauseStartTime) / 1000);
-        studyPausedTime += pauseDuration;
+        studyStartTime += pauseDuration * 1000;
         studyPauseStartTime = 0;
+    } else {
+        // اگر اولین بار است که شروع می‌شود
+        studyStartTime = Date.now() - (studyTotalElapsedSeconds * 1000);
     }
     
-    const startTime = Date.now() - (studyPausedTime * 1000);
-    
     studyTimerHandler = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        const now = Date.now();
+        const elapsed = Math.floor((now - studyStartTime) / 1000);
+        
         appData.focusSystem.studyElapsedSeconds = elapsed;
+        studyTotalElapsedSeconds = elapsed;
         
         // هماهنگی با تایمر روزانه
         appData.focusSystem.dailyTotalSeconds = elapsed;
@@ -2493,7 +2498,7 @@ function startStudyTimer() {
         updateTreeProgress();
         
         // هر 30 دقیقه یک سیب اضافه کن
-        if (elapsed % 1800 === 0 && elapsed > 0) {
+        if (elapsed > 0 && elapsed % 1800 === 0) {
             addAppleToTree();
         }
         
@@ -2560,12 +2565,8 @@ function stopStudyTimer() {
         studyTimerHandler = null;
     }
     
-    // ریست زمان پاز
-    studyPausedTime = 0;
-    studyPauseStartTime = 0;
-    
     // محاسبه زمان مطالعه
-    const duration = appData.focusSystem.studyElapsedSeconds;
+    const duration = studyTotalElapsedSeconds;
     const hours = duration / 3600;
     const minutes = Math.floor(duration / 60);
     
@@ -2603,6 +2604,11 @@ function stopStudyTimer() {
         }
     }
     
+    // ریست متغیرهای تایمر
+    studyStartTime = 0;
+    studyTotalElapsedSeconds = 0;
+    studyPauseStartTime = 0;
+    
     // ریست نمایش دکمه‌ها
     const startBtn = document.getElementById('startStudyBtn');
     const pauseBtn = document.getElementById('pauseStudyBtn');
@@ -2616,7 +2622,6 @@ function stopStudyTimer() {
     
     // ریست داده‌های جلسه
     appData.focusSystem.studyTimerRunning = false;
-    appData.focusSystem.studyStartTime = null;
     appData.focusSystem.studyElapsedSeconds = 0;
     appData.focusSystem.currentSession = null;
     
@@ -2652,7 +2657,8 @@ function updateStudyTimerDisplay() {
 
 // ==================== POMODORO TIMER ====================
 
-let pomodoroPausedTime = 0;
+let pomodoroStartTime = 0;
+let pomodoroTotalElapsedSeconds = 0;
 let pomodoroPauseStartTime = 0;
 
 function startPomodoroTimer() {
@@ -2663,22 +2669,28 @@ function startPomodoroTimer() {
     
     appData.focusSystem.pomodoroTimerRunning = true;
     
-    // اگر از حالت پاز ادامه می‌دهیم
-    if (pomodoroPauseStartTime > 0) {
-        const pauseDuration = Math.floor((Date.now() - pomodoroPauseStartTime) / 1000);
-        pomodoroPausedTime += pauseDuration;
-        pomodoroPauseStartTime = 0;
-    }
-    
     const totalTime = appData.focusSystem.pomodoroState === 'focus' ? 
         appData.focusSystem.pomodoroFocusMinutes * 60 : 
         appData.focusSystem.pomodoroBreakMinutes * 60;
     
-    const startTime = Date.now() - (pomodoroPausedTime * 1000);
+    // اگر قبلاً پاز شده بود، زمان پاز را محاسبه کن
+    if (pomodoroPauseStartTime > 0) {
+        const pauseDuration = Math.floor((Date.now() - pomodoroPauseStartTime) / 1000);
+        pomodoroStartTime += pauseDuration * 1000;
+        pomodoroPauseStartTime = 0;
+    } else {
+        // اگر اولین بار است که شروع می‌شود
+        pomodoroStartTime = Date.now() - (pomodoroTotalElapsedSeconds * 1000);
+    }
     
     pomodoroTimerHandler = setInterval(() => {
-        const elapsed = Math.floor((Date.now() - startTime) / 1000);
-        appData.focusSystem.pomodoroRemainingSeconds = Math.max(0, totalTime - elapsed);
+        const now = Date.now();
+        const elapsed = Math.floor((now - pomodoroStartTime) / 1000);
+        
+        pomodoroTotalElapsedSeconds = elapsed;
+        const remaining = Math.max(0, totalTime - elapsed);
+        
+        appData.focusSystem.pomodoroRemainingSeconds = remaining;
         
         // هماهنگی با تایمر روزانه
         appData.focusSystem.dailyTotalSeconds = elapsed;
@@ -2687,7 +2699,7 @@ function startPomodoroTimer() {
         updateDailyTimerDisplay();
         updateTreeProgress();
         
-        if (appData.focusSystem.pomodoroRemainingSeconds <= 0) {
+        if (remaining <= 0) {
             completePomodoroSession();
         }
         
@@ -2732,7 +2744,8 @@ function skipPomodoroSession() {
     }
     
     // ریست زمان پاز
-    pomodoroPausedTime = 0;
+    pomodoroStartTime = 0;
+    pomodoroTotalElapsedSeconds = 0;
     pomodoroPauseStartTime = 0;
     
     appData.focusSystem.pomodoroState = appData.focusSystem.pomodoroState === 'focus' ? 'break' : 'focus';
@@ -2758,7 +2771,8 @@ function completePomodoroSession() {
     }
     
     // ریست زمان پاز
-    pomodoroPausedTime = 0;
+    pomodoroStartTime = 0;
+    pomodoroTotalElapsedSeconds = 0;
     pomodoroPauseStartTime = 0;
     
     appData.focusSystem.pomodoroSessionsCompleted++;
@@ -2868,21 +2882,21 @@ function renderTree() {
     treeSVG.innerHTML = `
         <div class="relative w-64 h-64">
             <!-- تنه درخت -->
-            <div class="absolute w-12 h-32 bg-gradient-to-r from-yellow-900 to-yellow-800 rounded-lg left-1/2 transform -translate-x-1/2 bottom-0"></div>
+            <div class="absolute w-12 h-32 bg-gradient-to-r from-yellow-900 to-yellow-800 rounded-lg left-1/2 transform -translate-x-1/2 bottom-10"></div>
             
-            <!-- شاخ و برگ ها -->
-            <div class="absolute w-48 h-48 bg-gradient-to-r from-emerald-600 to-green-500 rounded-full left-1/2 top-8 transform -translate-x-1/2"></div>
-            <div class="absolute w-40 h-40 bg-gradient-to-r from-emerald-700 to-green-600 rounded-full left-1/4 top-12"></div>
-            <div class="absolute w-40 h-40 bg-gradient-to-r from-emerald-700 to-green-600 rounded-full right-1/4 top-12"></div>
+            <!-- شاخ و برگ ها (بالاتر) -->
+            <div class="absolute w-48 h-40 bg-gradient-to-r from-emerald-600 to-green-500 rounded-full left-1/2 top-0 transform -translate-x-1/2"></div>
+            <div class="absolute w-36 h-36 bg-gradient-to-r from-emerald-700 to-green-600 rounded-full left-1/4 top-4"></div>
+            <div class="absolute w-36 h-36 bg-gradient-to-r from-emerald-700 to-green-600 rounded-full right-1/4 top-4"></div>
             
             <!-- گلدان -->
-            <div class="absolute w-20 h-8 bg-gradient-to-r from-orange-700 to-orange-600 rounded-lg left-1/2 transform -translate-x-1/2 -bottom-2"></div>
+            <div class="absolute w-20 h-8 bg-gradient-to-r from-orange-700 to-orange-600 rounded-lg left-1/2 transform -translate-x-1/2 bottom-2"></div>
         </div>
     `;
     applesContainer.appendChild(treeSVG);
     
     // محاسبه تعداد سیب‌های قابل نمایش
-    const applesToShow = Math.floor(appData.focusSystem.dailyTotalSeconds / 3600);
+    const applesToShow = Math.floor(appData.focusSystem.dailyTotalSeconds / 1800); // هر نیم ساعت یک سیب
     const collectedApples = appData.focusSystem.applesCollected;
     
     if (applesToShow > 0 || collectedApples > 0) {
@@ -2892,8 +2906,8 @@ function renderTree() {
         for (let i = 0; i < applesToShow; i++) {
             const apple = document.createElement('div');
             apple.className = 'apple absolute cursor-pointer z-20 animate-bounce';
-            apple.style.left = `${40 + (i * 20) % 50}%`;
-            apple.style.top = `${30 + (i * 15) % 40}%`;
+            apple.style.left = `${40 + (i * 25) % 40}%`;
+            apple.style.top = `${15 + (i * 20) % 50}%`;
             apple.style.fontSize = '2rem';
             apple.innerHTML = '🍎';
             apple.title = 'سیب دانش - کلیک برای جمع‌آوری';
@@ -2907,8 +2921,8 @@ function renderTree() {
         if (collectedApples > 0) {
             const collectedApple = document.createElement('div');
             collectedApple.className = 'collected-apple absolute z-30 animate-pulse';
-            collectedApple.style.left = '80%';
-            collectedApple.style.top = '10%';
+            collectedApple.style.left = '85%';
+            collectedApple.style.top = '5%';
             collectedApple.style.fontSize = '1.8rem';
             collectedApple.style.fontWeight = 'bold';
             collectedApple.style.background = 'linear-gradient(135deg, #fbbf24, #f59e0b)';
@@ -2980,14 +2994,14 @@ function updateAppleStats() {
     const storedApplesElement = document.getElementById('storedApples');
     const nextAppleTimeElement = document.getElementById('nextAppleTime');
     
-    const applesToShow = Math.floor(appData.focusSystem.dailyTotalSeconds / 3600);
+    const applesToShow = Math.floor(appData.focusSystem.dailyTotalSeconds / 1800); // هر نیم ساعت یک سیب
     
     if (appleCountElement) appleCountElement.textContent = applesToShow;
     if (collectedApplesElement) collectedApplesElement.textContent = appData.focusSystem.applesCollected;
     if (storedApplesElement) storedApplesElement.textContent = appData.focusSystem.applesStored;
     
     if (nextAppleTimeElement) {
-        const secondsToNextApple = 3600 - (appData.focusSystem.dailyTotalSeconds % 3600);
+        const secondsToNextApple = 1800 - (appData.focusSystem.dailyTotalSeconds % 1800);
         const minutesToNextApple = Math.ceil(secondsToNextApple / 60);
         const seconds = secondsToNextApple % 60;
         nextAppleTimeElement.textContent = `${minutesToNextApple.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
@@ -3070,31 +3084,27 @@ function refreshChart() {
 }
 
 function generateWeeklyDataFromHistory() {
+    // ایجاد آرایه برای 7 روز هفته
     const days = [0, 0, 0, 0, 0, 0, 0];
-    
     const today = new Date();
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay());
     
+    // محاسبه تاریخ 7 روز گذشته
+    const last7Days = [];
+    for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(today.getDate() - i);
+        last7Days.push(date.toLocaleDateString('fa-IR'));
+    }
+    
+    // پر کردن داده‌ها از تاریخچه مطالعه
     appData.focusSystem.studyHistory.forEach(entry => {
-        try {
-            const entryDate = new Date(entry.startTime);
-            const dayIndex = (entryDate.getDay() + 1) % 7;
-            
-            if (dayIndex >= 0 && dayIndex < 7) {
-                days[dayIndex] += parseFloat(entry.durationHours || 0);
-            }
-        } catch (e) {
-            console.warn('⚠️ Error parsing date:', e);
+        const dayIndex = last7Days.indexOf(entry.date);
+        if (dayIndex !== -1) {
+            days[dayIndex] += parseFloat(entry.durationHours || 0);
         }
     });
     
-    if (days.every(h => h === 0)) {
-        days.forEach((_, i) => {
-            days[i] = Math.random() * 3 + 1;
-        });
-    }
-    
+    // حذف داده‌های نمونه و استفاده فقط از داده‌های واقعی
     appData.focusSystem.weeklyData = days.map(hours => parseFloat(hours.toFixed(1)));
 }
 
@@ -3102,12 +3112,15 @@ function renderWeeklyChart() {
     const ctx = document.getElementById('weeklyChart');
     if (!ctx) return;
     
+    // روزهای هفته فارسی
     const days = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
     
+    // اگر chart قبلی وجود دارد، آن را از بین ببریم
     if (window.weeklyChartInstance) {
         window.weeklyChartInstance.destroy();
     }
     
+    // ایجاد نمودار جدید
     window.weeklyChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -3115,26 +3128,23 @@ function renderWeeklyChart() {
             datasets: [{
                 label: 'ساعت مطالعه',
                 data: appData.focusSystem.weeklyData,
-                backgroundColor: [
-                    'rgba(147, 51, 234, 0.7)',
-                    'rgba(59, 130, 246, 0.7)',
-                    'rgba(16, 185, 129, 0.7)',
-                    'rgba(245, 158, 11, 0.7)',
-                    'rgba(239, 68, 68, 0.7)',
-                    'rgba(6, 182, 212, 0.7)',
-                    'rgba(236, 72, 153, 0.7)'
-                ],
-                borderColor: [
-                    'rgb(147, 51, 234)',
-                    'rgb(59, 130, 246)',
-                    'rgb(16, 185, 129)',
-                    'rgb(245, 158, 11)',
-                    'rgb(239, 68, 68)',
-                    'rgb(6, 182, 212)',
-                    'rgb(236, 72, 153)'
-                ],
-                borderWidth: 1,
-                borderRadius: 8,
+                backgroundColor: (context) => {
+                    const value = context.dataset.data[context.dataIndex];
+                    // رنگ‌ها بر اساس مقدار ساعت
+                    if (value >= 4) return 'rgba(16, 185, 129, 0.8)'; // سبز برای 4+ ساعت
+                    if (value >= 2) return 'rgba(245, 158, 11, 0.8)'; // زرد برای 2-4 ساعت
+                    if (value > 0) return 'rgba(239, 68, 68, 0.8)'; // قرمز برای کمتر از 2 ساعت
+                    return 'rgba(209, 213, 219, 0.6)'; // خاکستری برای صفر
+                },
+                borderColor: (context) => {
+                    const value = context.dataset.data[context.dataIndex];
+                    if (value >= 4) return 'rgb(16, 185, 129)';
+                    if (value >= 2) return 'rgb(245, 158, 11)';
+                    if (value > 0) return 'rgb(239, 68, 68)';
+                    return 'rgb(209, 213, 219)';
+                },
+                borderWidth: 2,
+                borderRadius: 6,
                 borderSkipped: false,
             }]
         },
@@ -3148,7 +3158,17 @@ function renderWeeklyChart() {
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            return `${context.parsed.y.toFixed(1)} ساعت`;
+                            const value = context.parsed.y;
+                            if (value === 0) return 'بدون مطالعه';
+                            return `${value.toFixed(1)} ساعت مطالعه`;
+                        },
+                        afterLabel: function(context) {
+                            const value = context.parsed.y;
+                            if (value === 0) return '';
+                            
+                            // محاسبه تعداد سیب‌های کسب شده (هر نیم ساعت یک سیب)
+                            const applesEarned = Math.floor(value * 2); // 2 سیب در ساعت
+                            return `🎯 ${applesEarned} سیب کسب شد`;
                         }
                     }
                 }
@@ -3158,20 +3178,40 @@ function renderWeeklyChart() {
                     beginAtZero: true,
                     title: {
                         display: true,
-                        text: 'ساعت'
+                        text: 'ساعت مطالعه',
+                        font: {
+                            family: 'Vazir, sans-serif'
+                        }
                     },
                     ticks: {
                         callback: function(value) {
-                            return value + 'h';
+                            return value + ' ساعت';
+                        },
+                        font: {
+                            family: 'Vazir, sans-serif'
                         }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
                     }
                 },
                 x: {
                     ticks: {
                         autoSkip: false,
-                        maxRotation: 0
+                        maxRotation: 0,
+                        font: {
+                            family: 'Vazir, sans-serif',
+                            size: 11
+                        }
+                    },
+                    grid: {
+                        display: false
                     }
                 }
+            },
+            animation: {
+                duration: 1000,
+                easing: 'easeOutQuart'
             }
         }
     });
@@ -3209,16 +3249,34 @@ function updateTotalStats() {
 function switchMode(mode) {
     const stopwatchMode = document.getElementById('stopwatchMode');
     const pomodoroMode = document.getElementById('pomodoroMode');
+    const switchToStopwatch = document.getElementById('switchToStopwatch');
+    const switchToPomodoro = document.getElementById('switchToPomodoro');
     
-    if (!stopwatchMode || !pomodoroMode) return;
+    if (!stopwatchMode || !pomodoroMode || !switchToStopwatch || !switchToPomodoro) return;
     
     if (mode === 'stopwatch') {
         stopwatchMode.classList.remove('hidden');
         pomodoroMode.classList.add('hidden');
+        
+        // تغییر استایل دکمه‌ها
+        switchToStopwatch.classList.add('bg-gradient-to-r', 'from-purple-500', 'to-pink-600', 'text-white');
+        switchToStopwatch.classList.remove('bg-gray-100', 'text-gray-700');
+        
+        switchToPomodoro.classList.remove('bg-gradient-to-r', 'from-purple-500', 'to-pink-600', 'text-white');
+        switchToPomodoro.classList.add('bg-gray-100', 'text-gray-700');
+        
         showNotification('🔄 تغییر به حالت تایمر معمولی', 'info');
     } else {
         stopwatchMode.classList.add('hidden');
         pomodoroMode.classList.remove('hidden');
+        
+        // تغییر استایل دکمه‌ها
+        switchToPomodoro.classList.add('bg-gradient-to-r', 'from-purple-500', 'to-pink-600', 'text-white');
+        switchToPomodoro.classList.remove('bg-gray-100', 'text-gray-700');
+        
+        switchToStopwatch.classList.remove('bg-gradient-to-r', 'from-purple-500', 'to-pink-600', 'text-white');
+        switchToStopwatch.classList.add('bg-gray-100', 'text-gray-700');
+        
         showNotification('🔄 تغییر به حالت پومودورو', 'info');
     }
 }
@@ -3226,30 +3284,40 @@ function switchMode(mode) {
 // ==================== SETUP EVENT LISTENERS ====================
 
 function setupFocusEventListeners() {
+    // تایمر مطالعه
     document.getElementById('startStudyBtn')?.addEventListener('click', startStudyTimer);
     document.getElementById('pauseStudyBtn')?.addEventListener('click', pauseStudyTimer);
     document.getElementById('stopStudyBtn')?.addEventListener('click', stopStudyTimer);
     
+    // تایمر پومودورو
     document.getElementById('startPomodoroBtn')?.addEventListener('click', startPomodoroTimer);
     document.getElementById('pausePomodoroBtn')?.addEventListener('click', pausePomodoroTimer);
     document.getElementById('skipPomodoroBtn')?.addEventListener('click', skipPomodoroSession);
     
+    // تنظیمات پومودورو
     document.getElementById('increaseFocusTime')?.addEventListener('click', () => adjustPomodoroTime('focus', 5));
     document.getElementById('decreaseFocusTime')?.addEventListener('click', () => adjustPomodoroTime('focus', -5));
     document.getElementById('increaseBreakTime')?.addEventListener('click', () => adjustPomodoroTime('break', 1));
     document.getElementById('decreaseBreakTime')?.addEventListener('click', () => adjustPomodoroTime('break', -1));
     
+    // درخت دانش
     document.getElementById('collectApplesBtn')?.addEventListener('click', collectAllApples);
     
+    // نمودار هفتگی
     document.getElementById('refreshChartBtn')?.addEventListener('click', refreshChart);
     
+    // سوئیچ حالت‌ها - با event listener صحیح
     document.getElementById('switchToStopwatch')?.addEventListener('click', () => switchMode('stopwatch'));
     document.getElementById('switchToPomodoro')?.addEventListener('click', () => switchMode('pomodoro'));
     
+    // رویداد DOMContentLoaded
     document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => {
             renderStudyForm();
             setupSubjectsManagement();
+            
+            // تنظیم اولیه حالت
+            switchMode('stopwatch');
         }, 100);
     });
 }
@@ -3294,6 +3362,7 @@ window.renderStudyForm = renderStudyForm;
 window.setupSubjectsManagement = setupSubjectsManagement;
 window.collectSingleApple = collectSingleApple;
 
+// ذخیره‌سازی خودکار هر 30 ثانیه
 setInterval(() => {
     if (appData.focusSystem.studyTimerRunning || appData.focusSystem.pomodoroTimerRunning) {
         saveFocusData();
