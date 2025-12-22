@@ -3580,3 +3580,130 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 console.log('📚 Focus Mode System Loaded Successfully');
+// مدیریت پنل کاربر - بدون دکمه ضربدر
+document.addEventListener('DOMContentLoaded', function() {
+    const userMenuToggle = document.getElementById('userMenuToggle');
+    const userSidebar = document.querySelector('#userPanel .sidebar');
+    const overlay = document.getElementById('userSidebarOverlay');
+    
+    // باز کردن سایدبار در موبایل
+    if (userMenuToggle) {
+        userMenuToggle.addEventListener('click', function() {
+            openSidebar();
+        });
+    }
+    
+    // بستن با کلیک روی overlay
+    if (overlay) {
+        overlay.addEventListener('click', function() {
+            closeSidebar();
+        });
+    }
+    
+    // بستن با کلیک روی محتوای اصلی در موبایل (اگر سایدبار باز است)
+    const mainContent = document.querySelector('#userPanel .main-content');
+    if (mainContent) {
+        mainContent.addEventListener('click', function() {
+            if (window.innerWidth < 1024 && userSidebar.classList.contains('translate-x-0')) {
+                closeSidebar();
+            }
+        });
+    }
+    
+    // تابع باز کردن سایدبار
+    function openSidebar() {
+        userSidebar.classList.remove('translate-x-full');
+        userSidebar.classList.add('translate-x-0');
+        overlay.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    // تابع بستن سایدبار
+    function closeSidebar() {
+        userSidebar.classList.remove('translate-x-0');
+        userSidebar.classList.add('translate-x-full');
+        overlay.classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }
+    
+    // مدیریت کلیک روی لینک‌های منو - این مهمه!
+    const sidebarLinks = document.querySelectorAll('#userPanel .sidebar-item');
+    sidebarLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // تغییر صفحه
+            const pageId = this.getAttribute('data-page');
+            if (pageId) {
+                // مخفی کردن همه صفحات
+                document.querySelectorAll('#userPanel > div > main > div').forEach(div => {
+                    div.classList.add('hidden');
+                    div.classList.remove('fade-in');
+                });
+                
+                // نمایش صفحه انتخاب شده
+                const targetPage = document.getElementById(pageId);
+                if (targetPage) {
+                    targetPage.classList.remove('hidden');
+                    setTimeout(() => {
+                        targetPage.classList.add('fade-in');
+                    }, 10);
+                }
+                
+                // تغییر عنوان صفحه
+                const pageTitle = document.getElementById('userPageTitle');
+                if (pageTitle) {
+                    const titles = {
+                        'userDashboard': 'داشبورد کاربری',
+                        'addQuestion': 'افزودن سوال',
+                        'userQuestions': 'سوالات من',
+                        'userScores': 'امتیازات من',
+                        'focusMode': 'حالت فوکوس',
+                        'userSettings': 'تنظیمات پروفایل'
+                    };
+                    pageTitle.textContent = titles[pageId] || 'پنل کاربری';
+                }
+                
+                // آپدیت لینک فعال در منو
+                sidebarLinks.forEach(item => {
+                    item.classList.remove('active');
+                });
+                this.classList.add('active');
+                
+                // بستن سایدبار در موبایل (همینجا!)
+                if (window.innerWidth < 1024) {
+                    closeSidebar();
+                }
+            }
+        });
+    });
+    
+    // بستن با کلید ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && userSidebar.classList.contains('translate-x-0')) {
+            closeSidebar();
+        }
+    });
+    
+    // مدیریت ریسایز پنجره
+    window.addEventListener('resize', function() {
+        if (window.innerWidth >= 1024) {
+            // در دسکتاپ: سایدبار باز، overlay مخفی
+            userSidebar.classList.remove('translate-x-full');
+            userSidebar.classList.add('translate-x-0');
+            overlay.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        } else {
+            // در موبایل: سایدبار بسته
+            userSidebar.classList.remove('translate-x-0');
+            userSidebar.classList.add('translate-x-full');
+            overlay.classList.add('hidden');
+        }
+    });
+    
+    // مقداردهی اولیه
+    if (window.innerWidth >= 1024) {
+        userSidebar.classList.remove('translate-x-full');
+        userSidebar.classList.add('translate-x-0');
+    }
+});
