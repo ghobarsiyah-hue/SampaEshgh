@@ -1097,61 +1097,79 @@
         </div>
     </div>
 
-    <!-- پنل کاربر عادی -->
-    <div id="userPanel" class="min-h-screen hidden">
-        <!-- محتوای پنل کاربر عادی -->
-        <div class="fixed inset-y-0 right-0 z-50 w-64 sidebar text-white">
-            <div class="flex flex-col h-full">
-                <div class="flex items-center justify-center h-20 bg-gradient-to-r from-purple-800 to-pink-700 bg-opacity-90">
-                    <div class="h-12 w-12 rounded-full bg-white flex items-center justify-center text-purple-600 mr-2">
-                        <i class="fas fa-user text-xl"></i>
-                    </div>
-                    <h1 class="text-xl font-bold">پنل کاربری</h1>
+<!-- پنل کاربر عادی -->
+<div id="userPanel" class="min-h-screen hidden">
+    <!-- محتوای پنل کاربر عادی -->
+    <div class="fixed inset-y-0 right-0 z-50 w-64 sidebar text-white transform translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out">
+        <!-- Overlay برای بستن در موبایل -->
+        <div id="userSidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden hidden"></div>
+        
+        <div class="flex flex-col h-full relative z-50 bg-gradient-to-r from-purple-600 to-pink-600">
+            <!-- هدر پنل کاربری - طراحی بهبود یافته -->
+            <div class="p-4 bg-gradient-to-r from-purple-700 to-pink-700">
+                <!-- دکمه بستن در موبایل -->
+                <div class="flex justify-end mb-3">
+                    <button id="closeUserSidebar" class="lg:hidden text-white text-xl hover:text-purple-200 transition-colors">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
                 
                 <!-- پروفایل کاربر -->
-                <div class="p-4 border-b border-purple-700">
-                    <div class="flex items-center">
-                        <div class="h-12 w-12 rounded-full bg-gradient-to-r from-purple-200 to-pink-200 flex items-center justify-center text-purple-800">
-                            <i class="fas fa-user"></i>
+                <div class="flex flex-col items-center">
+                    <!-- آواتار کاربر -->
+                    <div class="relative mb-3">
+                        <div class="h-20 w-20 rounded-full bg-gradient-to-r from-white to-purple-100 flex items-center justify-center shadow-lg border-4 border-white/80">
+                            <i class="fas fa-user text-3xl text-purple-600"></i>
                         </div>
-                        <div class="mr-3">
-                            <p class="font-medium">کاربر عادی</p>
-                            <p class="text-xs text-purple-200">سطح دسترسی: کاربر</p>
+                        <!-- نشان وضعیت آنلاین -->
+                        <div class="absolute bottom-2 right-2 h-4 w-4 bg-emerald-500 rounded-full border-2 border-white shadow-sm"></div>
+                    </div>
+                    
+                    <!-- اطلاعات کاربر -->
+                    <div class="text-center">
+                        <h2 class="text-lg font-bold text-white mb-1">کاربر عادی</h2>
+                        <div class="inline-flex items-center bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
+                            <span class="text-xs text-white">سطح دسترسی: عادی</span>
+                            <i class="fas fa-star text-amber-300 text-xs mr-2"></i>
                         </div>
                     </div>
                 </div>
-                
-                <!-- منو -->
-                <nav class="flex-1 p-4">
-                    <a href="#" class="flex items-center px-4 py-3 sidebar-item active" data-page="userDashboard">
-                        <i class="fas fa-tachometer-alt ml-3"></i>
-                        <span>داشبورد کاربری</span>
-                    </a>
-                    <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="addQuestion">
-                        <i class="fas fa-plus-circle ml-3"></i>
-                        <span>افزودن سوال</span>
-                    </a>
-                    <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="userQuestions">
-                        <i class="fas fa-list ml-3"></i>
-                        <span>سوالات من</span>
-                    </a>
-                    <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="userScores">
-                        <i class="fas fa-chart-line ml-3"></i>
-                        <span>امتیازات من</span>
-                    </a>
-                    <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="focusMode">
-                        <i class="fas fa-hourglass-half ml-3 flex-shrink-0"></i>
-                        <span>حالت فوکوس</span>
-                    </a>
-                    <a href="#" class="flex items-center px-4 py-3 sidebar-item" id="userLogout">
-                        <i class="fas fa-sign-out-alt ml-3"></i>
-                        <span>خروج</span>
-                    </a>
-                </nav>
             </div>
+            
+            <!-- منو -->
+            <nav class="flex-1 p-4 overflow-y-auto">
+                <a href="#" class="flex items-center px-4 py-3 sidebar-item active" data-page="userDashboard">
+                    <i class="fas fa-tachometer-alt ml-3"></i>
+                    <span>داشبورد کاربری</span>
+                </a>
+                <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="addQuestion">
+                    <i class="fas fa-plus-circle ml-3"></i>
+                    <span>افزودن سوال</span>
+                </a>
+                <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="userQuestions">
+                    <i class="fas fa-list ml-3"></i>
+                    <span>سوالات من</span>
+                </a>
+                <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="userScores">
+                    <i class="fas fa-chart-line ml-3"></i>
+                    <span>امتیازات من</span>
+                </a>
+                <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="focusMode">
+                    <i class="fas fa-hourglass-half ml-3 flex-shrink-0"></i>
+                    <span>حالت فوکوس</span>
+                </a>
+                <!-- تنظیمات پروفایل -->
+                <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="userSettings">
+                    <i class="fas fa-cog ml-3"></i>
+                    <span>تنظیمات پروفایل</span>
+                </a>
+                <a href="#" class="flex items-center px-4 py-3 sidebar-item" id="userLogout">
+                    <i class="fas fa-sign-out-alt ml-3"></i>
+                    <span>خروج</span>
+                </a>
+            </nav>
         </div>
-
+    </div>
         <!-- محتوای اصلی -->
         <div class="pr-64 transition-all duration-300 main-content">
             <!-- نوار بالایی -->
