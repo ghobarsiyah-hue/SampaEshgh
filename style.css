@@ -2217,3 +2217,43 @@
 .animate-float-up {
     animation: float-up 3s ease-in-out infinite;
 }
+/* استایل‌های سایدبار کاربر */
+#closeUserSidebar {
+    transition: all 0.3s ease;
+    z-index: 9999; /* بالاترین z-index */
+}
+
+#closeUserSidebar:hover {
+    transform: scale(1.1);
+    background-color: #9333ea; /* رنگ بنفش تیره‌تر */
+}
+
+/* استایل همبرگر منو */
+#userMenuToggle {
+    transition: transform 0.3s ease;
+}
+
+#userMenuToggle:hover {
+    transform: scale(1.1);
+}
+
+/* انیمیشن‌ها */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* برای جلوگیری از اسکرول صفحه هنگام باز بودن سایدبار */
+body.sidebar-open {
+    overflow: hidden;
+}
