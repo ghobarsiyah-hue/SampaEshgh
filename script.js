@@ -2,7 +2,6 @@
 const adminCredentials = [
     { username: "Salar", password: "8711" },
     { username: "Miaad", password: "9248" },
-    { username: "Sonia", password: "8514" },
     { username: "Hasti", password: "1304" }
 ];
 
@@ -293,78 +292,6 @@ function updateQuestionsStatistics() {
     document.getElementById('mediumQuestionsCount').textContent = sampleQuestions.filter(q => q.level === 'medium').length;
     document.getElementById('hardQuestionsCount').textContent = sampleQuestions.filter(q => q.level === 'hard').length;
 }
-
-// مدیریت منو در پنل ادمین
-document.querySelectorAll('#adminPanel [data-page]').forEach(item => {
-    item.addEventListener('click', function(e) {
-        e.preventDefault();
-        
-        document.querySelectorAll('#adminPanel .sidebar-item').forEach(i => {
-            i.classList.remove('active');
-        });
-        
-        this.classList.add('active');
-        
-        document.querySelectorAll('#adminPanel > div > main > div').forEach(div => {
-            div.classList.add('hidden');
-        });
-        
-        const pageId = this.getAttribute('data-page');
-        document.getElementById(pageId).classList.remove('hidden');
-        
-        document.getElementById('adminPageTitle').textContent = this.querySelector('span').textContent;
-        
-        if (window.innerWidth < 768) {
-            document.querySelector('#adminPanel .sidebar').classList.remove('open');
-            document.querySelector('#adminPanel .main-content').classList.remove('sidebar-open');
-        }
-    });
-});
-
-// مدیریت منو در پنل کاربر
-document.querySelectorAll('#userPanel [data-page]').forEach(item => {
-    item.addEventListener('click', function(e) {
-        e.preventDefault();
-        
-        document.querySelectorAll('#userPanel .sidebar-item').forEach(i => {
-            i.classList.remove('active');
-        });
-        
-        this.classList.add('active');
-        
-        document.querySelectorAll('#userPanel > div > main > div').forEach(div => {
-            div.classList.add('hidden');
-        });
-        
-        const pageId = this.getAttribute('data-page');
-        document.getElementById(pageId).classList.remove('hidden');
-        
-        document.getElementById('userPageTitle').textContent = this.querySelector('span').textContent;
-        
-        if (window.innerWidth < 768) {
-            document.querySelector('#userPanel .sidebar').classList.remove('open');
-            document.querySelector('#userPanel .main-content').classList.remove('sidebar-open');
-        }
-    });
-});
-
-// مدیریت منوی موبایل برای ادمین
-document.getElementById('adminMenuToggle').addEventListener('click', function() {
-    const sidebar = document.querySelector('#adminPanel .sidebar');
-    const mainContent = document.querySelector('#adminPanel .main-content');
-    
-    sidebar.classList.toggle('open');
-    mainContent.classList.toggle('sidebar-open');
-});
-
-// مدیریت منوی موبایل برای کاربر
-document.getElementById('userMenuToggle').addEventListener('click', function() {
-    const sidebar = document.querySelector('#userPanel .sidebar');
-    const mainContent = document.querySelector('#userPanel .main-content');
-    
-    sidebar.classList.toggle('open');
-    mainContent.classList.toggle('sidebar-open');
-});
 
 // خروج از پنل ادمین
 document.getElementById('adminLogout').addEventListener('click', function(e) {
@@ -1986,16 +1913,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     initializeFocusMode();
 });
-// ==================== FOCUS MODE SYSTEM - نسخه نهایی ====================
-let studyTimerHandler = null;
-let pomodoroTimerHandler = null;
-
 // ==================== STUDY TIMER - کاملاً کارا ====================
-
 let studyStartTime = 0;
 let studyTotalElapsedSeconds = 0;
 let studyPauseStartTime = 0;
 let currentSessionDuration = 0;
+let isStudyPaused = false;
+let studyTimerHandler = null;
 
 function startStudyTimer() {
     // اگر پومودورو فعال است، توقف کن
@@ -2014,55 +1938,75 @@ function startStudyTimer() {
         return;
     }
     
-    appData.focusSystem.studyTimerRunning = true;
+    // ذخیره اطلاعات جلسه
+    const topic = document.getElementById('studyTopic').value;
+    const notes = document.getElementById('studyNotes').value;
+    const goal = document.getElementById('studyGoal').value;
     
-    // اگر قبلاً پاز شده بود، زمان پاز را محاسبه کن
-    if (studyPauseStartTime > 0) {
+    // ذخیره زمان شروع جلسه فعلی
+    appData.focusSystem.currentSession = {
+        id: Date.now(),
+        subject: subject,
+        topic: topic || 'بدون موضوع',
+        notes: notes || '',
+        goal: goal || '',
+        startTime: new Date(),
+        startDailySeconds: appData.focusSystem.dailyTotalSeconds || 0 // ذخیره زمان شروع daily
+    };
+    
+    // اگر در حالت pause بودیم، زمان pause را محاسبه کن
+    if (isStudyPaused && studyPauseStartTime > 0) {
         const pauseDuration = Math.floor((Date.now() - studyPauseStartTime) / 1000);
-        studyStartTime += pauseDuration * 1000;
+        studyStartTime += pauseDuration * 1000; // زمان pause را به startTime اضافه کن
         studyPauseStartTime = 0;
     } else {
-        // اگر اولین بار است که شروع می‌شود
-        studyStartTime = Date.now() - (studyTotalElapsedSeconds * 1000);
+        // شروع جدید
+        studyStartTime = Date.now();
+        studyTotalElapsedSeconds = 0;
+        currentSessionDuration = 0;
     }
     
+    isStudyPaused = false;
+    
+    // شروع تایمر
     studyTimerHandler = setInterval(() => {
         const now = Date.now();
         const elapsed = Math.floor((now - studyStartTime) / 1000);
         
-        appData.focusSystem.studyElapsedSeconds = elapsed;
         studyTotalElapsedSeconds = elapsed;
         currentSessionDuration = elapsed;
         
-        updateStudyTimerDisplay();
+        // به روزرسانی نمایش
+        const hours = Math.floor(elapsed / 3600);
+        const minutes = Math.floor((elapsed % 3600) / 60);
+        const seconds = elapsed % 60;
+        
+        document.getElementById('currentTimer').textContent = 
+            `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
         
         // هر 30 دقیقه یک سیب اضافه کن
         if (elapsed > 0 && elapsed % 1800 === 0) {
             addAppleToTree();
         }
         
-        saveFocusData();
+        // هر 30 ثانیه یک بار نمودار را آپدیت کن
+        if (elapsed > 0 && elapsed % 30 === 0) {
+            updateChartFromTimer();
+        }
+        
+        // هر 5 دقیقه وضعیت جلسه را به روز کن
+        if (elapsed > 0 && elapsed % 300 === 0) {
+            if (appData.focusSystem.currentSession) {
+                appData.focusSystem.currentSession.elapsedSeconds = elapsed;
+            }
+        }
+        
     }, 1000);
     
     // نمایش دکمه‌ها
     document.getElementById('startStudyBtn').classList.add('hidden');
     document.getElementById('pauseStudyBtn').classList.remove('hidden');
-    
-    // ذخیره اطلاعات جلسه
-    const topic = document.getElementById('studyTopic').value;
-    const notes = document.getElementById('studyNotes').value;
-    const goal = document.getElementById('studyGoal').value;
-    
-    if (!appData.focusSystem.currentSession) {
-        appData.focusSystem.currentSession = {
-            id: Date.now(),
-            subject: subject,
-            topic: topic || 'بدون موضوع',
-            notes: notes || '',
-            goal: goal || '',
-            startTime: new Date()
-        };
-    }
+    document.getElementById('stopStudyBtn').classList.remove('hidden');
     
     const goalText = goal ? ` (هدف: ${goal})` : '';
     showNotification(`📚 مطالعه ${subject}${goalText} شروع شد`, 'success');
@@ -2077,28 +2021,65 @@ function pauseStudyTimer() {
     clearInterval(studyTimerHandler);
     studyTimerHandler = null;
     studyPauseStartTime = Date.now();
+    isStudyPaused = true;
     
+    // تغییر وضعیت دکمه‌ها
     document.getElementById('startStudyBtn').classList.remove('hidden');
     document.getElementById('pauseStudyBtn').classList.add('hidden');
+    document.getElementById('stopStudyBtn').classList.remove('hidden');
+    
+    // نمایش زمان فعلی به صورت فریز شده
+    const hours = Math.floor(studyTotalElapsedSeconds / 3600);
+    const minutes = Math.floor((studyTotalElapsedSeconds % 3600) / 60);
+    const seconds = studyTotalElapsedSeconds % 60;
+    
+    document.getElementById('currentTimer').textContent = 
+        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
     
     showNotification('⏸️ مطالعه متوقف شد', 'warning');
 }
 
 function stopStudyTimer() {
-    if (!appData.focusSystem.currentSession) {
-        showNotification('جلسه‌ای برای پایان دادن وجود ندارد', 'warning');
-        return;
-    }
+    // محاسبه زمان جلسه قبل از توقف تایمر
+    const sessionDuration = currentSessionDuration;
     
+    // اگر تایمر در حال اجراست، اول متوقفش کن
     if (studyTimerHandler) {
         clearInterval(studyTimerHandler);
         studyTimerHandler = null;
     }
     
-    // محاسبه زمان مطالعه جلسه فعلی
-    const sessionDuration = currentSessionDuration;
-    const hours = sessionDuration / 3600;
-    const minutes = Math.floor(sessionDuration / 60);
+    if (!appData.focusSystem.currentSession) {
+        showNotification('جلسه‌ای برای پایان دادن وجود ندارد', 'warning');
+        return;
+    }
+    
+    // اگر زمان خیلی کم است
+    if (sessionDuration < 10) {
+        showNotification('زمان مطالعه خیلی کم است!', 'warning');
+        
+        // ریست نمایش دکمه‌ها
+        document.getElementById('startStudyBtn').classList.remove('hidden');
+        document.getElementById('pauseStudyBtn').classList.add('hidden');
+        document.getElementById('stopStudyBtn').classList.remove('hidden');
+        
+        // ریست نمایش تایمر
+        document.getElementById('currentTimer').textContent = '00:00:00';
+        
+        // ریست متغیرها
+        studyStartTime = 0;
+        studyTotalElapsedSeconds = 0;
+        studyPauseStartTime = 0;
+        currentSessionDuration = 0;
+        isStudyPaused = false;
+        appData.focusSystem.currentSession = null;
+        
+        return;
+    }
+    
+    const hours = Math.floor(sessionDuration / 3600);
+    const minutes = Math.floor((sessionDuration % 3600) / 60);
+    const seconds = sessionDuration % 60;
     
     // ثبت جلسه مطالعه
     const session = appData.focusSystem.currentSession;
@@ -2114,22 +2095,32 @@ function stopStudyTimer() {
         endTime: endTime.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
         date: endTime.toLocaleDateString('fa-IR'),
         duration: sessionDuration,
-        durationFormatted: `${Math.floor(sessionDuration / 60)}:${(sessionDuration % 60).toString().padStart(2, '0')}`,
+        durationFormatted: `${hours > 0 ? hours + ':' : ''}${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`,
         durationHours: (sessionDuration / 3600).toFixed(2)
     };
     
+    // اطمینان از وجود آرایه history
+    if (!appData.focusSystem.studyHistory) {
+        appData.focusSystem.studyHistory = [];
+    }
     appData.focusSystem.studyHistory.unshift(historyEntry);
     
-    // افزودن زمان جلسه به تایمر روزانه
+    // *** فقط در stop زمان به daily اضافه می‌شود (تغییر شماره 3) ***
+    if (!appData.focusSystem.dailyTotalSeconds) {
+        appData.focusSystem.dailyTotalSeconds = 0;
+    }
     appData.focusSystem.dailyTotalSeconds += sessionDuration;
+    
+    // آپدیت آمار کلی
+    if (!appData.focusSystem.totalStudyHours) {
+        appData.focusSystem.totalStudyHours = 0;
+    }
+    appData.focusSystem.totalStudyHours += (sessionDuration / 3600);
     
     // آپدیت آمار درس
     updateSubjectStats(session.subject, sessionDuration);
     
-    // آپدیت آمار کلی
-    appData.focusSystem.totalStudyHours += hours;
-    
-    // اضافه کردن سیب
+    // اضافه کردن سیب (هر 30 دقیقه یک سیب)
     if (sessionDuration >= 1800) {
         const applesToAdd = Math.floor(sessionDuration / 1800);
         for (let i = 0; i < applesToAdd; i++) {
@@ -2142,16 +2133,17 @@ function stopStudyTimer() {
     studyTotalElapsedSeconds = 0;
     studyPauseStartTime = 0;
     currentSessionDuration = 0;
+    isStudyPaused = false;
     
     // ریست نمایش دکمه‌ها
     document.getElementById('startStudyBtn').classList.remove('hidden');
     document.getElementById('pauseStudyBtn').classList.add('hidden');
+    document.getElementById('stopStudyBtn').classList.remove('hidden');
     
+    // ریست نمایش تایمر
     document.getElementById('currentTimer').textContent = '00:00:00';
     
     // ریست داده‌های جلسه
-    appData.focusSystem.studyTimerRunning = false;
-    appData.focusSystem.studyElapsedSeconds = 0;
     appData.focusSystem.currentSession = null;
     
     // ریست فرم
@@ -2161,35 +2153,26 @@ function stopStudyTimer() {
     
     // آپدیت نمایش‌ها
     updateDailyTimerDisplay();
+    updateAppleStats();
     updateStudyHistory();
-    renderSubjectsList();
     updateTotalStats();
-    generateWeeklyDataFromHistory();
-    renderWeeklyChart();
-    renderTree();
+    
+    // ذخیره داده‌ها
     saveFocusData();
     
+    // نمایش پیام موفقیت
     const goalText = session.goal ? ` (هدف: ${session.goal})` : '';
-    const hoursDisplay = Math.floor(sessionDuration / 3600);
-    const minutesDisplay = Math.floor((sessionDuration % 3600) / 60);
     let timeText = '';
-    if (hoursDisplay > 0) {
-        timeText = `${hoursDisplay} ساعت و ${minutesDisplay} دقیقه`;
+    
+    if (hours > 0) {
+        timeText = `${hours} ساعت و ${minutes} دقیقه`;
+    } else if (minutes > 0) {
+        timeText = `${minutes} دقیقه و ${seconds} ثانیه`;
     } else {
-        timeText = `${minutesDisplay} دقیقه`;
+        timeText = `${seconds} ثانیه`;
     }
     
     showNotification(`✅ مطالعه ${session.subject}${goalText} تکمیل شد! زمان: ${timeText}`, 'success');
-}
-
-function updateStudyTimerDisplay() {
-    const elapsed = appData.focusSystem.studyElapsedSeconds;
-    const hours = Math.floor(elapsed / 3600);
-    const minutes = Math.floor((elapsed % 3600) / 60);
-    const seconds = elapsed % 60;
-    
-    document.getElementById('currentTimer').textContent = 
-        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
 // ==================== POMODORO TIMER - با فرم ثبت درس ====================
@@ -2200,6 +2183,7 @@ let pomodoroPauseStartTime = 0;
 let pomodoroPhase = 'focus';
 let pomodoroIsRunning = false;
 let pomodoroSubject = '';
+let pomodoroTimerHandler = null;
 
 function startPomodoroTimer() {
     // اگر تایمر مطالعه فعال است، توقف کن
@@ -2290,12 +2274,17 @@ function skipPomodoroSession() {
         const completedTime = appData.focusSystem.pomodoroFocusMinutes * 60;
         const actualTime = completedTime - pomodoroRemainingSeconds;
         
-        // زمان تمرکز به تایمر روزانه اضافه می‌شود
-        appData.focusSystem.dailyTotalSeconds += actualTime;
-        
-        // ثبت در تاریخچه اگر زمان قابل توجهی بوده
-        if (actualTime >= 60) { // حداقل 1 دقیقه
-            recordPomodoroSession(actualTime);
+        // زمان تمرکز به تایمر روزانه اضافه می‌شود (تغییر شماره 3)
+        if (actualTime > 0) {
+            if (!appData.focusSystem.dailyTotalSeconds) {
+                appData.focusSystem.dailyTotalSeconds = 0;
+            }
+            appData.focusSystem.dailyTotalSeconds += actualTime;
+            
+            // ثبت در تاریخچه اگر زمان قابل توجهی بوده
+            if (actualTime >= 60) { // حداقل 1 دقیقه
+                recordPomodoroSession(actualTime);
+            }
         }
         
         // برای زمان تمرکز کامل، سیب اضافه کن
@@ -2356,6 +2345,9 @@ function recordPomodoroSession(durationSeconds) {
         durationHours: (durationSeconds / 3600).toFixed(2)
     };
     
+    if (!appData.focusSystem.studyHistory) {
+        appData.focusSystem.studyHistory = [];
+    }
     appData.focusSystem.studyHistory.unshift(historyEntry);
     
     // آپدیت آمار درس
@@ -2368,11 +2360,14 @@ function completePomodoroSession() {
         pomodoroTimerHandler = null;
     }
     
-    // فقط اگر در فاز تمرکز بودیم، زمان را اضافه کن
+    // فقط اگر در فاز تمرکز بودیم، زمان را اضافه کن (تغییر شماره 3)
     if (pomodoroPhase === 'focus') {
         const completedTime = appData.focusSystem.pomodoroFocusMinutes * 60;
         
         // زمان تمرکز به تایمر روزانه اضافه می‌شود
+        if (!appData.focusSystem.dailyTotalSeconds) {
+            appData.focusSystem.dailyTotalSeconds = 0;
+        }
         appData.focusSystem.dailyTotalSeconds += completedTime;
         
         // ثبت در تاریخچه
@@ -2439,6 +2434,7 @@ function updatePomodoroForm() {
     const pomodoroForm = document.getElementById('pomodoroForm');
     if (!pomodoroForm) return;
     
+    // تغییر شماره 1: فقط در فاز تمرکز فرم نمایش داده شود
     if (appData.focusSystem.pomodoroState === 'focus') {
         pomodoroForm.classList.remove('hidden');
     } else {
@@ -2469,7 +2465,6 @@ function adjustPomodoroTime(type, change) {
     
     saveFocusData();
 }
-
 // ==================== DAILY TIMER DISPLAY ====================
 
 function updateDailyTimerDisplay() {
@@ -2488,7 +2483,7 @@ function updateDailyTimerDisplay() {
     const dailyProgressText = document.getElementById('dailyProgressText');
     
     if (dailyProgressBar && dailyProgressText) {
-        const dailyProgress = Math.min(100, (totalSeconds / (24 * 3600)) * 100);
+        const dailyProgress = Math.min(100, (totalSeconds / (8 * 3600)) * 100); // 8 ساعت هدف
         dailyProgressBar.style.width = `${dailyProgress}%`;
         dailyProgressText.textContent = `${Math.floor(dailyProgress)}٪`;
     }
@@ -2498,11 +2493,11 @@ function updateDailyTimerDisplay() {
 
 function switchMode(mode) {
     // توقف هر تایمر فعال قبل از سوییچ
-    if (studyTimerHandler && appData.focusSystem.studyTimerRunning) {
+    if (studyTimerHandler) {
         pauseStudyTimer();
     }
     
-    if (pomodoroTimerHandler && appData.focusSystem.pomodoroTimerRunning) {
+    if (pomodoroTimerHandler) {
         pausePomodoroTimer();
     }
     
@@ -2518,95 +2513,10 @@ function switchMode(mode) {
         if (stopwatchMode) stopwatchMode.classList.add('hidden');
         if (pomodoroMode) pomodoroMode.classList.remove('hidden');
         
-        // اضافه کردن فرم ثبت درس به پومودورو اگر وجود ندارد
+        // اضافه کردن فرم ثبت درس به پومودورو
         addPomodoroForm();
         
         showNotification('🔄 تغییر به حالت پومودورو', 'info');
-    }
-}
-
-// ==================== POMODORO FORM MANAGEMENT ====================
-
-function addPomodoroForm() {
-    const pomodoroMode = document.getElementById('pomodoroMode');
-    if (!pomodoroMode) return;
-    
-    // بررسی کنید آیا فرم قبلاً اضافه شده
-    let pomodoroForm = pomodoroMode.querySelector('#pomodoroForm');
-    
-    if (!pomodoroForm) {
-        // پیدا کردن تنظیمات پومودورو
-        const settingsDiv = pomodoroMode.querySelector('.bg-gradient-to-r.from-purple-50.to-pink-50');
-        if (settingsDiv) {
-            pomodoroForm = document.createElement('div');
-            pomodoroForm.id = 'pomodoroForm';
-            pomodoroForm.className = 'bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-xl border border-gray-200';
-            pomodoroForm.innerHTML = `
-                <h4 class="font-medium text-gray-700 mb-3">📝 ثبت درس برای تمرکز</h4>
-                <div class="grid grid-cols-1 gap-3">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">درس</label>
-                        <select id="pomodoroSubject" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200">
-                            <option value="">انتخاب درس</option>
-                            <!-- دروس به صورت دینامیک اضافه می‌شوند -->
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">توضیحات (اختیاری)</label>
-                        <textarea id="pomodoroNotes" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200" placeholder="توضیحات جلسه تمرکز..."></textarea>
-                    </div>
-                </div>
-            `;
-            
-            // اضافه کردن فرم قبل از تنظیمات
-            settingsDiv.parentNode.insertBefore(pomodoroForm, settingsDiv);
-            
-            // بروزرسانی dropdown دروس
-            updatePomodoroSubjectDropdown();
-        }
-    } else {
-        updatePomodoroSubjectDropdown();
-    }
-    
-    updatePomodoroForm();
-}
-
-function updatePomodoroSubjectDropdown() {
-    const dropdown = document.getElementById('pomodoroSubject');
-    if (!dropdown) return;
-    
-    // ذخیره مقدار فعلی
-    const currentValue = dropdown.value;
-    
-    while (dropdown.options.length > 0) {
-        dropdown.remove(0);
-    }
-    
-    const defaultOption = document.createElement('option');
-    defaultOption.value = "";
-    defaultOption.textContent = "انتخاب درس";
-    dropdown.appendChild(defaultOption);
-    
-    if (appData.focusSystem.subjects && appData.focusSystem.subjects.length > 0) {
-        appData.focusSystem.subjects.forEach(subject => {
-            const option = document.createElement('option');
-            option.value = subject.name;
-            option.textContent = subject.name;
-            dropdown.appendChild(option);
-        });
-    } else {
-        const defaultSubjects = ["ریاضی", "فیزیک", "شیمی", "زیست شناسی", "ادبیات فارسی", "عربی", "دین و زندگی", "زبان انگلیسی"];
-        defaultSubjects.forEach(subjectName => {
-            const option = document.createElement('option');
-            option.value = subjectName;
-            option.textContent = subjectName;
-            dropdown.appendChild(option);
-        });
-    }
-    
-    // بازگرداندن مقدار قبلی
-    if (currentValue) {
-        dropdown.value = currentValue;
     }
 }
 
@@ -2643,15 +2553,16 @@ function updateStudySubjectDropdown() {
     // ذخیره مقدار فعلی
     const currentValue = dropdown.value;
     
-    while (dropdown.options.length > 0) {
-        dropdown.remove(0);
-    }
+    // پاک کردن options فعلی
+    dropdown.innerHTML = '';
     
+    // اضافه کردن option پیش‌فرض
     const defaultOption = document.createElement('option');
     defaultOption.value = "";
     defaultOption.textContent = "انتخاب درس";
     dropdown.appendChild(defaultOption);
     
+    // اضافه کردن دروس
     if (appData.focusSystem.subjects && appData.focusSystem.subjects.length > 0) {
         appData.focusSystem.subjects.forEach(subject => {
             const option = document.createElement('option');
@@ -2660,6 +2571,7 @@ function updateStudySubjectDropdown() {
             dropdown.appendChild(option);
         });
     } else {
+        // اگر درسی وجود ندارد، دروس پیش‌فرض اضافه کن
         const defaultSubjects = ["ریاضی", "فیزیک", "شیمی", "زیست شناسی", "ادبیات فارسی", "عربی", "دین و زندگی", "زبان انگلیسی"];
         defaultSubjects.forEach(subjectName => {
             const option = document.createElement('option');
@@ -2675,7 +2587,94 @@ function updateStudySubjectDropdown() {
     }
 }
 
-// ==================== SUBJECTS MANAGEMENT - با استفاده از مودال موجود ====================
+// ==================== POMODORO FORM MANAGEMENT ====================
+
+function addPomodoroForm() {
+    const pomodoroMode = document.getElementById('pomodoroMode');
+    if (!pomodoroMode) return;
+    
+    // بررسی کنید آیا فرم قبلاً اضافه شده
+    let pomodoroForm = pomodoroMode.querySelector('#pomodoroForm');
+    
+    if (!pomodoroForm) {
+        // پیدا کردن container تنظیمات پومودورو
+        const timerContainer = pomodoroMode.querySelector('.flex.flex-col.items-center.justify-center.p-6');
+        if (timerContainer) {
+            // اضافه کردن فرم قبل از تنظیمات
+            const settingsDiv = timerContainer.nextElementSibling;
+            if (settingsDiv && settingsDiv.classList.contains('bg-gradient-to-r')) {
+                pomodoroForm = document.createElement('div');
+                pomodoroForm.id = 'pomodoroForm';
+                pomodoroForm.className = 'bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-xl border border-gray-200 mb-4';
+                pomodoroForm.innerHTML = `
+                    <h4 class="font-medium text-gray-700 mb-3">📝 ثبت درس برای تمرکز</h4>
+                    <div class="grid grid-cols-1 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">درس</label>
+                            <select id="pomodoroSubject" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200">
+                                <option value="">انتخاب درس</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">توضیحات (اختیاری)</label>
+                            <textarea id="pomodoroNotes" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200" placeholder="توضیحات جلسه تمرکز..."></textarea>
+                        </div>
+                    </div>
+                `;
+                
+                // اضافه کردن فرم قبل از تنظیمات
+                settingsDiv.parentNode.insertBefore(pomodoroForm, settingsDiv);
+            }
+        }
+    }
+    
+    // بروزرسانی dropdown دروس
+    updatePomodoroSubjectDropdown();
+    updatePomodoroForm();
+}
+
+function updatePomodoroSubjectDropdown() {
+    const dropdown = document.getElementById('pomodoroSubject');
+    if (!dropdown) return;
+    
+    // ذخیره مقدار فعلی
+    const currentValue = dropdown.value;
+    
+    // پاک کردن options فعلی
+    dropdown.innerHTML = '';
+    
+    // اضافه کردن option پیش‌فرض
+    const defaultOption = document.createElement('option');
+    defaultOption.value = "";
+    defaultOption.textContent = "انتخاب درس";
+    dropdown.appendChild(defaultOption);
+    
+    // اضافه کردن دروس
+    if (appData.focusSystem.subjects && appData.focusSystem.subjects.length > 0) {
+        appData.focusSystem.subjects.forEach(subject => {
+            const option = document.createElement('option');
+            option.value = subject.name;
+            option.textContent = subject.name;
+            dropdown.appendChild(option);
+        });
+    } else {
+        // اگر درسی وجود ندارد، دروس پیش‌فرض اضافه کن
+        const defaultSubjects = ["ریاضی", "فیزیک", "شیمی", "زیست شناسی", "ادبیات فارسی", "عربی", "دین و زندگی", "زبان انگلیسی"];
+        defaultSubjects.forEach(subjectName => {
+            const option = document.createElement('option');
+            option.value = subjectName;
+            option.textContent = subjectName;
+            dropdown.appendChild(option);
+        });
+    }
+    
+    // بازگرداندن مقدار قبلی
+    if (currentValue) {
+        dropdown.value = currentValue;
+    }
+}
+
+// ==================== SUBJECTS MANAGEMENT ====================
 
 function openSubjectModal() {
     const modal = document.getElementById('subjectModal');
@@ -2687,6 +2686,13 @@ function openSubjectModal() {
         
         // انتخاب رنگ پیش‌فرض
         selectColor('purple');
+        
+        // تغییر متن دکمه به "افزودن درس"
+        const saveButton = modal.querySelector('button[onclick="saveSubjectFromModal()"]');
+        if (saveButton) {
+            saveButton.onclick = saveSubjectFromModal;
+            saveButton.textContent = 'افزودن درس';
+        }
     }
 }
 
@@ -2722,6 +2728,11 @@ function saveSubjectFromModal() {
         showNotification('لطفاً نام درس را وارد کنید', 'error');
         nameInput?.focus();
         return;
+    }
+    
+    // ایجاد آرایه subjects اگر وجود ندارد
+    if (!appData.focusSystem.subjects) {
+        appData.focusSystem.subjects = [];
     }
     
     // بررسی تکراری نبودن
@@ -2774,7 +2785,12 @@ function renderSubjectsList() {
     
     subjectsList.innerHTML = '';
     
-    if (!appData.focusSystem.subjects || appData.focusSystem.subjects.length === 0) {
+    // ایجاد آرایه subjects اگر وجود ندارد
+    if (!appData.focusSystem.subjects) {
+        appData.focusSystem.subjects = [];
+    }
+    
+    if (appData.focusSystem.subjects.length === 0) {
         const emptyMessage = document.createElement('div');
         emptyMessage.className = 'text-center py-8 text-gray-500';
         emptyMessage.innerHTML = `
@@ -2944,7 +2960,8 @@ function deleteSubject(subjectId) {
     const subjectName = subject.name;
     
     // اگر درس در حال استفاده است، هشدار بده
-    const isInUse = appData.focusSystem.studyHistory.some(entry => entry.subject === subjectName);
+    const isInUse = appData.focusSystem.studyHistory && 
+                   appData.focusSystem.studyHistory.some(entry => entry.subject === subjectName);
     
     const message = isInUse 
         ? `درس "${subjectName}" در تاریخچه مطالعه شما استفاده شده است. آیا مطمئنید می‌خواهید حذف کنید؟`
@@ -2960,7 +2977,63 @@ function deleteSubject(subjectId) {
     }
 }
 
-// ==================== TREE MANAGEMENT ====================
+function updateSubjectStats(subjectName, durationSeconds) {
+    // ایجاد آرایه subjects اگر وجود ندارد
+    if (!appData.focusSystem.subjects) {
+        appData.focusSystem.subjects = [];
+    }
+    
+    let subject = appData.focusSystem.subjects.find(s => s.name === subjectName);
+    
+    // اگر درس وجود ندارد، ایجاد کن
+    if (!subject) {
+        subject = {
+            id: Date.now(),
+            name: subjectName,
+            color: 'purple',
+            totalHours: 0,
+            todayHours: 0,
+            weeklyHours: 0
+        };
+        appData.focusSystem.subjects.push(subject);
+    }
+    
+    const hours = durationSeconds / 3600;
+    subject.todayHours += hours;
+    subject.weeklyHours += hours;
+    subject.totalHours += hours;
+}
+
+// ==================== APPLE & TREE MANAGEMENT ====================
+
+function addAppleToTree() {
+    if (!appData.focusSystem.applesCollected) {
+        appData.focusSystem.applesCollected = 0;
+    }
+    appData.focusSystem.applesCollected++;
+    
+    updateAppleStats();
+    showNotification(`🍎 یک سیب به درخت دانش شما اضافه شد! (جمع: ${appData.focusSystem.applesCollected})`, 'success');
+    saveFocusData();
+    
+    renderTree();
+}
+
+function updateAppleStats() {
+    const applesToShow = Math.floor((appData.focusSystem.dailyTotalSeconds || 0) / 1800);
+    
+    const appleCountElement = document.getElementById('appleCount');
+    const collectedApplesElement = document.getElementById('collectedApples');
+    const storedApplesElement = document.getElementById('storedApples');
+    const totalApplesElement = document.getElementById('totalApples');
+    
+    if (appleCountElement) appleCountElement.textContent = applesToShow;
+    if (collectedApplesElement) collectedApplesElement.textContent = appData.focusSystem.applesCollected || 0;
+    if (storedApplesElement) storedApplesElement.textContent = appData.focusSystem.applesStored || 0;
+    
+    const totalApples = (appData.focusSystem.applesCollected || 0) + (appData.focusSystem.applesStored || 0);
+    if (totalApplesElement) totalApplesElement.textContent = totalApples;
+}
 
 function renderTree() {
     const applesContainer = document.getElementById('applesContainer');
@@ -2970,13 +3043,11 @@ function renderTree() {
 
     applesContainer.innerHTML = '';
 
-    const fs = appData?.focusSystem ?? {};
-    const dailySeconds = Number(fs.dailyTotalSeconds || 0);
-    const collectedApples = Number(fs.applesCollected || 0);
+    const dailySeconds = Number(appData.focusSystem.dailyTotalSeconds || 0);
     const applesToShow = Math.floor(dailySeconds / 1800);
 
     // پیام خالی
-    if (!(applesToShow > 0 || collectedApples > 0)) {
+    if (!(applesToShow > 0 || appData.focusSystem.applesCollected > 0)) {
         treeEmptyMessage.style.display = 'flex';
         updateAppleStats();
         return;
@@ -3029,30 +3100,10 @@ function renderTree() {
     updateAppleStats();
 }
 
-function updateAppleStats() {
-    const applesToShow = Math.floor(appData.focusSystem.dailyTotalSeconds / 1800);
-    
-    const appleCountElement = document.getElementById('appleCount');
-    const collectedApplesElement = document.getElementById('collectedApples');
-    const storedApplesElement = document.getElementById('storedApples');
-    const totalApplesElement = document.getElementById('totalApples');
-    const nextAppleTimeElement = document.getElementById('nextAppleTime');
-    
-    if (appleCountElement) appleCountElement.textContent = applesToShow;
-    if (collectedApplesElement) collectedApplesElement.textContent = appData.focusSystem.applesCollected;
-    if (storedApplesElement) storedApplesElement.textContent = appData.focusSystem.applesStored;
-    if (totalApplesElement) totalApplesElement.textContent = appData.focusSystem.applesCollected + appData.focusSystem.applesStored;
-    
-    if (nextAppleTimeElement) {
-        const secondsToNextApple = 1800 - (appData.focusSystem.dailyTotalSeconds % 1800);
-        const minutesToNextApple = Math.ceil(secondsToNextApple / 60);
-        const seconds = secondsToNextApple % 60;
-        nextAppleTimeElement.textContent = 
-            `${minutesToNextApple.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    }
-}
-
 function collectSingleApple(appleElement) {
+    if (!appData.focusSystem.applesCollected) {
+        appData.focusSystem.applesCollected = 0;
+    }
     appData.focusSystem.applesCollected++;
     
     appleElement.style.transition = 'all 0.5s ease-out';
@@ -3071,22 +3122,16 @@ function collectSingleApple(appleElement) {
     }, 500);
 }
 
-function addAppleToTree() {
-    appData.focusSystem.applesCollected++;
-    updateAppleStats();
-    showNotification(`🍎 یک سیب به درخت دانش شما اضافه شد! (جمع: ${appData.focusSystem.applesCollected})`, 'success');
-    saveFocusData();
-    
-    renderTree();
-}
-
 function collectAllApples() {
-    if (appData.focusSystem.applesCollected === 0) {
+    if (!appData.focusSystem.applesCollected || appData.focusSystem.applesCollected === 0) {
         showNotification('هنوز سیبی برای جمع‌آوری ندارید!', 'warning');
         return;
     }
     
     const collected = appData.focusSystem.applesCollected;
+    if (!appData.focusSystem.applesStored) {
+        appData.focusSystem.applesStored = 0;
+    }
     appData.focusSystem.applesStored += collected;
     appData.focusSystem.applesCollected = 0;
     
@@ -3111,9 +3156,9 @@ function loadFocusData() {
             }
             
             if (parsed.lastSavedDate !== today) {
-                // روز جدید
+                // روز جدید - نگهداری داده‌های دائمی
                 Object.keys(parsed).forEach(key => {
-                    if (key !== 'lastSavedDate' && key !== 'dailyTotalSeconds' && key !== 'applesCollected' && key !== 'todayHours') {
+                    if (key !== 'lastSavedDate' && key !== 'dailyTotalSeconds' && key !== 'applesCollected') {
                         appData.focusSystem[key] = parsed[key];
                     }
                 });
@@ -3133,7 +3178,7 @@ function loadFocusData() {
                 
                 appData.focusSystem.lastSavedDate = today;
             } else {
-                // همان روز
+                // همان روز - بارگذاری همه داده‌ها
                 Object.assign(appData.focusSystem, parsed);
             }
         }
@@ -3153,21 +3198,16 @@ function saveFocusData() {
 
 // ==================== STUDY HISTORY & STATS ====================
 
-function updateSubjectStats(subjectName, durationSeconds) {
-    const subject = appData.focusSystem.subjects.find(s => s.name === subjectName);
-    if (subject) {
-        const hours = durationSeconds / 3600;
-        subject.todayHours += hours;
-        subject.weeklyHours += hours;
-        subject.totalHours += hours;
-    }
-}
-
 function updateStudyHistory() {
     const studyHistory = document.getElementById('studyHistory');
     if (!studyHistory) return;
     
     studyHistory.innerHTML = '';
+    
+    // ایجاد آرایه history اگر وجود ندارد
+    if (!appData.focusSystem.studyHistory) {
+        appData.focusSystem.studyHistory = [];
+    }
     
     const today = new Date().toLocaleDateString('fa-IR');
     const todayHistory = appData.focusSystem.studyHistory.filter(entry => entry.date === today);
@@ -3189,7 +3229,14 @@ function updateStudyHistory() {
     
     let todayTotalMinutes = 0;
     
-    todayHistory.forEach(entry => {
+    // مرتب سازی بر اساس تاریخ (جدیدترین اول)
+    const sortedTodayHistory = [...todayHistory].sort((a, b) => {
+        const timeA = new Date(`${a.date} ${a.startTime}`).getTime();
+        const timeB = new Date(`${b.date} ${b.startTime}`).getTime();
+        return timeB - timeA;
+    });
+    
+    sortedTodayHistory.forEach(entry => {
         todayTotalMinutes += entry.duration / 60;
         
         const historyItem = document.createElement('div');
@@ -3218,7 +3265,17 @@ function updateStudyHistory() {
 }
 
 function generateWeeklyDataFromHistory() {
-    const days = [0, 0, 0, 0, 0, 0, 0];
+    // ایجاد آرایه‌های مورد نیاز اگر وجود ندارند
+    if (!appData.focusSystem.weeklyData) {
+        appData.focusSystem.weeklyData = [0, 0, 0, 0, 0, 0, 0];
+    }
+    
+    if (!appData.focusSystem.studyHistory) {
+        appData.focusSystem.studyHistory = [];
+    }
+    
+    // محاسبه ساعات مطالعه هر روز
+    const weeklyHours = Array(7).fill(0);
     const today = new Date();
     
     // تولید ۷ روز گذشته
@@ -3230,16 +3287,65 @@ function generateWeeklyDataFromHistory() {
     }
     
     // جمع‌آوری داده‌های مطالعه از تاریخچه
-    if (appData.focusSystem.studyHistory && appData.focusSystem.studyHistory.length > 0) {
-        appData.focusSystem.studyHistory.forEach(entry => {
+    appData.focusSystem.studyHistory.forEach(entry => {
+        const dayIndex = last7Days.indexOf(entry.date);
+        if (dayIndex !== -1) {
+            weeklyHours[dayIndex] += parseFloat(entry.durationHours || 0);
+        }
+    });
+    
+    // همچنین داده‌های تایمر روزانه را اضافه کن
+    const dailySeconds = appData.focusSystem.dailyTotalSeconds || 0;
+    const dailyHours = dailySeconds / 3600;
+    
+    // پیدا کردن index امروز
+    const todayIndex = 6;
+    weeklyHours[todayIndex] += dailyHours;
+    
+    // تقسیم هر روز به بازه‌های نیم‌ساعتی
+    const timeSlots = Array(7).fill(null).map(() => Array(48).fill(0));
+    
+    // پر کردن بازه‌ها برای جلسات تاریخچه
+    appData.focusSystem.studyHistory.forEach(entry => {
+        try {
             const dayIndex = last7Days.indexOf(entry.date);
             if (dayIndex !== -1) {
-                days[dayIndex] += parseFloat(entry.durationHours || 0);
+                const [startHour, startMinute] = entry.startTime.split(':').map(Number);
+                const durationMinutes = entry.duration / 60;
+                const startSlot = Math.floor((startHour * 60 + startMinute) / 30);
+                
+                let remainingMinutes = durationMinutes;
+                let currentSlot = startSlot;
+                
+                while (remainingMinutes > 0 && currentSlot < 48) {
+                    const minutesInThisSlot = Math.min(remainingMinutes, 30);
+                    timeSlots[dayIndex][currentSlot] += Math.min(minutesInThisSlot / 30, 1.0);
+                    remainingMinutes -= minutesInThisSlot;
+                    currentSlot++;
+                }
             }
-        });
+        } catch (error) {
+            console.warn('خطا در پردازش ورودی تاریخچه:', entry, error);
+        }
+    });
+    
+    // پر کردن بازه‌ها برای تایمر روزانه جاری
+    if (dailyHours > 0) {
+        const todayIndex = 6;
+        
+        // محاسبه بازه‌های نیم‌ساعتی که امروز پر شده‌اند
+        const dailyMinutes = dailySeconds / 60;
+        const filledSlots = Math.ceil(dailyMinutes / 30);
+        
+        // پر کردن بازه‌ها از ساعت 0 به بعد
+        for (let i = 0; i < Math.min(filledSlots, 48); i++) {
+            const minutesInSlot = Math.min(dailyMinutes - (i * 30), 30);
+            timeSlots[todayIndex][i] = Math.min(minutesInSlot / 30, 1.0);
+        }
     }
     
-    appData.focusSystem.weeklyData = days.map(hours => parseFloat(hours.toFixed(1)));
+    appData.focusSystem.weeklyData = weeklyHours;
+    appData.focusSystem.timeSlots = timeSlots;
 }
 
 function renderWeeklyChart() {
@@ -3248,20 +3354,25 @@ function renderWeeklyChart() {
     
     // اطمینان از وجود داده‌ها
     if (!appData.focusSystem.weeklyData) {
-        appData.focusSystem.weeklyData = [0, 0, 0, 0, 0, 0, 0];
+        generateWeeklyDataFromHistory();
     }
     
     const days = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
-    const todayIndex = new Date().getDay(); // 0: یکشنبه, 6: شنبه
+    const today = new Date();
+    const todayIndex = today.getDay();
     
     // تبدیل به شاخص فارسی (شنبه = 0)
     let persianTodayIndex = todayIndex - 1;
-    if (persianTodayIndex < 0) persianTodayIndex = 6; // اگر یکشنبه بود، به شنبه تبدیل کن
+    if (persianTodayIndex < 0) persianTodayIndex = 6;
     
     // از بین بردن نمودار قبلی
     if (window.weeklyChartInstance) {
         window.weeklyChartInstance.destroy();
     }
+    
+    // محاسبه حداکثر ساعات
+    const weeklyHours = appData.focusSystem.weeklyData || [0, 0, 0, 0, 0, 0, 0];
+    const maxHours = Math.max(8, Math.ceil(Math.max(...weeklyHours) * 2) / 2);
     
     // ایجاد نمودار جدید
     window.weeklyChartInstance = new Chart(ctx, {
@@ -3270,33 +3381,38 @@ function renderWeeklyChart() {
             labels: days,
             datasets: [{
                 label: 'ساعت مطالعه',
-                data: appData.focusSystem.weeklyData,
+                data: weeklyHours,
                 backgroundColor: (context) => {
-                    const value = context.dataset.data[context.dataIndex];
+                    const hours = context.dataset.data[context.dataIndex];
                     const dayIndex = context.dataIndex;
                     
                     // هایلایت روز امروز
                     if (dayIndex === persianTodayIndex) {
-                        return value > 0 ? 'rgba(139, 92, 246, 0.9)' : 'rgba(139, 92, 246, 0.4)';
+                        if (hours >= 6) return 'rgba(139, 92, 246, 0.9)';
+                        if (hours >= 3) return 'rgba(139, 92, 246, 0.7)';
+                        if (hours > 0) return 'rgba(139, 92, 246, 0.5)';
+                        return 'rgba(139, 92, 246, 0.3)';
                     }
                     
-                    // رنگ‌بندی بر اساس مقدار
-                    if (value >= 4) return 'rgba(16, 185, 129, 0.8)';
-                    if (value >= 2) return 'rgba(245, 158, 11, 0.8)';
-                    if (value > 0) return 'rgba(239, 68, 68, 0.8)';
+                    // رنگ‌بندی بر اساس ساعات مطالعه
+                    if (hours >= 6) return 'rgba(16, 185, 129, 0.8)';
+                    if (hours >= 3) return 'rgba(245, 158, 11, 0.8)';
+                    if (hours > 0) return 'rgba(239, 68, 68, 0.8)';
                     return 'rgba(209, 213, 219, 0.6)';
                 },
                 borderColor: (context) => {
-                    const value = context.dataset.data[context.dataIndex];
+                    const hours = context.dataset.data[context.dataIndex];
                     const dayIndex = context.dataIndex;
                     
+                    // هایلایت روز امروز
                     if (dayIndex === persianTodayIndex) {
-                        return value > 0 ? 'rgb(139, 92, 246)' : 'rgb(209, 213, 219)';
+                        return hours > 0 ? 'rgb(139, 92, 246)' : 'rgb(209, 213, 219)';
                     }
                     
-                    if (value >= 4) return 'rgb(16, 185, 129)';
-                    if (value >= 2) return 'rgb(245, 158, 11)';
-                    if (value > 0) return 'rgb(239, 68, 68)';
+                    // حاشیه بر اساس ساعات
+                    if (hours >= 6) return 'rgb(16, 185, 129)';
+                    if (hours >= 3) return 'rgb(245, 158, 11)';
+                    if (hours > 0) return 'rgb(239, 68, 68)';
                     return 'rgb(209, 213, 219)';
                 },
                 borderWidth: 2,
@@ -3309,21 +3425,54 @@ function renderWeeklyChart() {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { 
-                    display: false 
-                },
+                legend: { display: false },
                 tooltip: {
                     rtl: true,
                     textDirection: 'rtl',
                     callbacks: {
+                        title: function(tooltipItems) {
+                            const dayIndex = tooltipItems[0].dataIndex;
+                            const dayName = days[dayIndex];
+                            const isToday = (dayIndex === persianTodayIndex);
+                            return `${dayName}${isToday ? ' (امروز)' : ''}`;
+                        },
                         label: function(context) {
-                            const value = context.parsed.y;
-                            const dayName = days[context.dataIndex];
-                            const isToday = (context.dataIndex === persianTodayIndex);
-                            const todayText = isToday ? ' (امروز)' : '';
+                            const hours = context.parsed.y;
+                            const dayIndex = context.dataIndex;
+                            const timeSlots = appData.focusSystem.timeSlots?.[dayIndex] || [];
                             
-                            if (value === 0) return `${dayName}${todayText}: بدون مطالعه`;
-                            return `${dayName}${todayText}: ${value.toFixed(1)} ساعت مطالعه`;
+                            const filledSlots = timeSlots.filter(slot => slot > 0).length;
+                            const totalMinutes = hours * 60;
+                            const minutes = Math.floor(totalMinutes % 60);
+                            
+                            const labels = [];
+                            
+                            if (hours === 0) {
+                                labels.push('بدون مطالعه در این روز');
+                            } else {
+                                labels.push(`⏱️ ${hours.toFixed(1)} ساعت مطالعه`);
+                                
+                                if (minutes > 0) {
+                                    labels.push(`⏱️ (${hours.toFixed(0)} ساعت و ${minutes} دقیقه)`);
+                                }
+                                
+                                labels.push(`🔢 ${filledSlots} بازه نیم‌ساعتی از ۴۸ بازه`);
+                                
+                                const slotPercentage = Math.round((filledSlots / 48) * 100);
+                                labels.push(`📊 ${slotPercentage}% از روز پر شده`);
+                                
+                                if (filledSlots > 0) {
+                                    const sampleSlots = [];
+                                    for (let i = 0; i < Math.min(filledSlots, 3); i++) {
+                                        const hour = Math.floor((i * 30) / 60);
+                                        const minute = (i * 30) % 60;
+                                        sampleSlots.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
+                                    }
+                                    labels.push(`🕐 نمونه بازه‌های پر: ${sampleSlots.join('، ')}${filledSlots > 3 ? '...' : ''}`);
+                                }
+                            }
+                            
+                            return labels;
                         }
                     },
                     backgroundColor: 'rgba(255, 255, 255, 0.95)',
@@ -3333,21 +3482,27 @@ function renderWeeklyChart() {
                     borderWidth: 1,
                     cornerRadius: 8,
                     padding: 12,
-                    displayColors: false,
+                    displayColors: true,
+                    boxPadding: 6,
                     titleFont: {
-                        family: 'Vazir, sans-serif',
-                        size: 12
-                    },
-                    bodyFont: {
                         family: 'Vazir, sans-serif',
                         size: 14,
                         weight: 'bold'
+                    },
+                    bodyFont: {
+                        family: 'Vazir, sans-serif',
+                        size: 12
+                    },
+                    footerFont: {
+                        family: 'Vazir, sans-serif',
+                        size: 10
                     }
                 }
             },
             scales: {
                 y: {
                     beginAtZero: true,
+                    max: maxHours,
                     title: {
                         display: true,
                         text: 'ساعت مطالعه',
@@ -3363,6 +3518,7 @@ function renderWeeklyChart() {
                         callback: function(value) {
                             return value + ' ساعت';
                         },
+                        stepSize: 1,
                         font: { 
                             family: 'Vazir, sans-serif',
                             size: 11
@@ -3372,7 +3528,8 @@ function renderWeeklyChart() {
                     },
                     grid: { 
                         color: 'rgba(0, 0, 0, 0.05)',
-                        drawBorder: false
+                        drawBorder: false,
+                        drawTicks: true
                     }
                 },
                 x: {
@@ -3391,7 +3548,8 @@ function renderWeeklyChart() {
                         padding: 10
                     },
                     grid: { 
-                        display: false 
+                        display: false,
+                        drawBorder: false
                     }
                 }
             },
@@ -3432,16 +3590,17 @@ function updateTotalStats() {
     const activeSubjectsElement = document.getElementById('activeSubjects');
     
     if (totalStudyTimeElement) {
-        totalStudyTimeElement.textContent = `${appData.focusSystem.totalStudyHours.toFixed(1)} ساعت`;
+        totalStudyTimeElement.textContent = `${(appData.focusSystem.totalStudyHours || 0).toFixed(1)} ساعت`;
     }
     if (streakDaysElement) {
-        streakDaysElement.textContent = `${appData.focusSystem.streakDays} روز`;
+        streakDaysElement.textContent = `${appData.focusSystem.streakDays || 0} روز`;
     }
     if (totalApplesElement) {
-        totalApplesElement.textContent = appData.focusSystem.applesCollected + appData.focusSystem.applesStored;
+        const totalApples = (appData.focusSystem.applesCollected || 0) + (appData.focusSystem.applesStored || 0);
+        totalApplesElement.textContent = totalApples;
     }
     if (activeSubjectsElement) {
-        activeSubjectsElement.textContent = appData.focusSystem.subjects.length;
+        activeSubjectsElement.textContent = (appData.focusSystem.subjects || []).length;
     }
 }
 
@@ -3452,6 +3611,30 @@ function refreshChart() {
     showNotification('📊 نمودار هفتگی بروزرسانی شد', 'success');
 }
 
+function updateChartFromTimer() {
+    // هر 30 دقیقه یک بار نمودار را آپدیت کن
+    const dailySeconds = appData.focusSystem.dailyTotalSeconds || 0;
+    const currentSlot = Math.floor((dailySeconds % 86400) / 1800);
+    
+    // فقط اگر اسلات تغییر کرده باشد
+    if (window.lastChartSlot !== currentSlot) {
+        window.lastChartSlot = currentSlot;
+        generateWeeklyDataFromHistory();
+        
+        if (window.weeklyChartInstance) {
+            const todayIndex = new Date().getDay();
+            let persianTodayIndex = todayIndex - 1;
+            if (persianTodayIndex < 0) persianTodayIndex = 6;
+            
+            const dailyHours = dailySeconds / 3600;
+            window.weeklyChartInstance.data.datasets[0].data[persianTodayIndex] = dailyHours;
+            
+            window.weeklyChartInstance.update();
+            updateWeeklyStats();
+        }
+    }
+}
+
 // ==================== INITIALIZATION ====================
 
 function setupFocusEventListeners() {
@@ -3460,18 +3643,36 @@ function setupFocusEventListeners() {
     const pauseStudyBtn = document.getElementById('pauseStudyBtn');
     const stopStudyBtn = document.getElementById('stopStudyBtn');
     
-    if (startStudyBtn) startStudyBtn.addEventListener('click', startStudyTimer);
-    if (pauseStudyBtn) pauseStudyBtn.addEventListener('click', pauseStudyTimer);
-    if (stopStudyBtn) stopStudyBtn.addEventListener('click', stopStudyTimer);
+    if (startStudyBtn) {
+        startStudyBtn.onclick = startStudyTimer;
+        console.log("✅ Event listener برای startStudyBtn اضافه شد");
+    }
+    if (pauseStudyBtn) {
+        pauseStudyBtn.onclick = pauseStudyTimer;
+        console.log("✅ Event listener برای pauseStudyBtn اضافه شد");
+    }
+    if (stopStudyBtn) {
+        stopStudyBtn.onclick = stopStudyTimer;
+        console.log("✅ Event listener برای stopStudyBtn اضافه شد");
+    }
     
     // تایمر پومودورو
     const startPomodoroBtn = document.getElementById('startPomodoroBtn');
     const pausePomodoroBtn = document.getElementById('pausePomodoroBtn');
     const skipPomodoroBtn = document.getElementById('skipPomodoroBtn');
     
-    if (startPomodoroBtn) startPomodoroBtn.addEventListener('click', startPomodoroTimer);
-    if (pausePomodoroBtn) pausePomodoroBtn.addEventListener('click', pausePomodoroTimer);
-    if (skipPomodoroBtn) skipPomodoroBtn.addEventListener('click', skipPomodoroSession);
+    if (startPomodoroBtn) {
+        startPomodoroBtn.onclick = startPomodoroTimer;
+        console.log("✅ Event listener برای startPomodoroBtn اضافه شد");
+    }
+    if (pausePomodoroBtn) {
+        pausePomodoroBtn.onclick = pausePomodoroTimer;
+        console.log("✅ Event listener برای pausePomodoroBtn اضافه شد");
+    }
+    if (skipPomodoroBtn) {
+        skipPomodoroBtn.onclick = skipPomodoroSession;
+        console.log("✅ Event listener برای skipPomodoroBtn اضافه شد");
+    }
     
     // تنظیمات پومودورو
     const increaseFocusTime = document.getElementById('increaseFocusTime');
@@ -3479,42 +3680,63 @@ function setupFocusEventListeners() {
     const increaseBreakTime = document.getElementById('increaseBreakTime');
     const decreaseBreakTime = document.getElementById('decreaseBreakTime');
     
-    if (increaseFocusTime) increaseFocusTime.addEventListener('click', () => adjustPomodoroTime('focus', 5));
-    if (decreaseFocusTime) decreaseFocusTime.addEventListener('click', () => adjustPomodoroTime('focus', -5));
-    if (increaseBreakTime) increaseBreakTime.addEventListener('click', () => adjustPomodoroTime('break', 5));
-    if (decreaseBreakTime) decreaseBreakTime.addEventListener('click', () => adjustPomodoroTime('break', -5));
+    if (increaseFocusTime) {
+        increaseFocusTime.onclick = () => adjustPomodoroTime('focus', 5);
+        console.log("✅ Event listener برای increaseFocusTime اضافه شد");
+    }
+    if (decreaseFocusTime) {
+        decreaseFocusTime.onclick = () => adjustPomodoroTime('focus', -5);
+        console.log("✅ Event listener برای decreaseFocusTime اضافه شد");
+    }
+    if (increaseBreakTime) {
+        increaseBreakTime.onclick = () => adjustPomodoroTime('break', 5);
+        console.log("✅ Event listener برای increaseBreakTime اضافه شد");
+    }
+    if (decreaseBreakTime) {
+        decreaseBreakTime.onclick = () => adjustPomodoroTime('break', -5);
+        console.log("✅ Event listener برای decreaseBreakTime اضافه شد");
+    }
     
-    // سوئیچ حالت‌ها
+    // سوئیچ حالت‌ها - اصلاح شده: event listener اضافه شد
     const switchToStopwatch = document.getElementById('switchToStopwatch');
     const switchToPomodoro = document.getElementById('switchToPomodoro');
     
-    if (switchToStopwatch) switchToStopwatch.addEventListener('click', () => switchMode('stopwatch'));
-    if (switchToPomodoro) switchToPomodoro.addEventListener('click', () => switchMode('pomodoro'));
+    if (switchToStopwatch) {
+        switchToStopwatch.onclick = () => switchMode('stopwatch');
+        console.log("✅ Event listener برای switchToStopwatch اضافه شد");
+    }
+    if (switchToPomodoro) {
+        switchToPomodoro.onclick = () => switchMode('pomodoro');
+        console.log("✅ Event listener برای switchToPomodoro اضافه شد");
+    }
     
     // دکمه جمع‌آوری همه سیب‌ها
     const collectAllApplesBtn = document.getElementById('collectAllApples');
     if (collectAllApplesBtn) {
-        collectAllApplesBtn.addEventListener('click', collectAllApples);
+        collectAllApplesBtn.onclick = collectAllApples;
+        console.log("✅ Event listener برای collectAllApplesBtn اضافه شد");
     }
     
     // دکمه رفرش نمودار
     const refreshChartBtn = document.getElementById('refreshChartBtn');
     if (refreshChartBtn) {
-        refreshChartBtn.addEventListener('click', refreshChart);
+        refreshChartBtn.onclick = refreshChart;
+        console.log("✅ Event listener برای refreshChartBtn اضافه شد");
     }
     
     // دکمه مودال دروس
     const addSubjectBtn = document.querySelector('button[onclick="openSubjectModal()"]');
     if (addSubjectBtn) {
-        addSubjectBtn.addEventListener('click', openSubjectModal);
+        addSubjectBtn.onclick = openSubjectModal;
+        console.log("✅ Event listener برای addSubjectBtn اضافه شد");
     }
 }
 
 function updateAllDisplays() {
     updateDailyTimerDisplay();
-    updateStudyTimerDisplay();
     updatePomodoroTimerDisplay();
     updatePomodoroStatus();
+    updatePomodoroForm();
     renderTree();
     renderStudyForm();
     renderSubjectsList();
@@ -3523,12 +3745,44 @@ function updateAllDisplays() {
     updateTotalStats();
     generateWeeklyDataFromHistory();
     renderWeeklyChart();
+    
+    // بروزرسانی dropdown پومودورو
+    updatePomodoroSubjectDropdown();
 }
 
 function initializeFocusMode() {
     console.log("📚 Initializing Focus Mode...");
     
     try {
+        // تنظیم مقادیر پیش‌فرض
+        if (!appData.focusSystem) {
+            appData.focusSystem = {};
+        }
+        
+        if (!appData.focusSystem.subjects) {
+            appData.focusSystem.subjects = [];
+        }
+        
+        if (!appData.focusSystem.studyHistory) {
+            appData.focusSystem.studyHistory = [];
+        }
+        
+        if (!appData.focusSystem.pomodoroFocusMinutes) {
+            appData.focusSystem.pomodoroFocusMinutes = 25;
+        }
+        
+        if (!appData.focusSystem.pomodoroBreakMinutes) {
+            appData.focusSystem.pomodoroBreakMinutes = 5;
+        }
+        
+        if (!appData.focusSystem.pomodoroState) {
+            appData.focusSystem.pomodoroState = 'focus';
+        }
+        
+        if (!appData.focusSystem.dailyTotalSeconds) {
+            appData.focusSystem.dailyTotalSeconds = 0;
+        }
+        
         loadFocusData();
         setupFocusEventListeners();
         updateAllDisplays();
@@ -3539,6 +3793,56 @@ function initializeFocusMode() {
         console.log("✅ Focus Mode Initialized Successfully");
     } catch (error) {
         console.error("❌ Error initializing Focus Mode:", error);
+    }
+}
+
+// ==================== NAVBAR TOGGLE FOR MOBILE ====================
+
+function setupMobileNavbarToggle() {
+    const menuToggle = document.getElementById('menuToggle');
+    const mobileNavMenu = document.getElementById('mobileNavMenu');
+    const closeMenuBtn = document.getElementById('closeMenuBtn');
+    const overlay = document.getElementById('mobileOverlay');
+    
+    if (menuToggle && mobileNavMenu) {
+        menuToggle.onclick = function() {
+            mobileNavMenu.classList.remove('hidden');
+            if (overlay) overlay.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // جلوگیری از اسکرول
+            console.log("📱 منوی موبایل باز شد");
+        };
+        
+        if (closeMenuBtn) {
+            closeMenuBtn.onclick = function() {
+                mobileNavMenu.classList.add('hidden');
+                if (overlay) overlay.classList.add('hidden');
+                document.body.style.overflow = ''; // بازگرداندن اسکرول
+                console.log("📱 منوی موبایل بسته شد");
+            };
+        }
+        
+        if (overlay) {
+            overlay.onclick = function() {
+                mobileNavMenu.classList.add('hidden');
+                overlay.classList.add('hidden');
+                document.body.style.overflow = ''; // بازگرداندن اسکرول
+                console.log("📱 منوی موبایل از طریق overlay بسته شد");
+            };
+        }
+        
+        // بستن منو با کلیک روی لینک‌های منو
+        const mobileMenuLinks = mobileNavMenu.querySelectorAll('a');
+        mobileMenuLinks.forEach(link => {
+            link.onclick = function() {
+                mobileNavMenu.classList.add('hidden');
+                if (overlay) overlay.classList.add('hidden');
+                document.body.style.overflow = ''; // بازگرداندن اسکرول
+            };
+        });
+        
+        console.log("✅ Mobile navbar toggle setup completed");
+    } else {
+        console.warn("⚠️ عناصر navbar موبایل یافت نشد");
     }
 }
 
@@ -3561,10 +3865,11 @@ window.editSubject = editSubject;
 window.deleteSubject = deleteSubject;
 window.collectAllApples = collectAllApples;
 window.refreshChart = refreshChart;
+window.setupMobileNavbarToggle = setupMobileNavbarToggle;
 
 // ذخیره‌سازی خودکار
 setInterval(() => {
-    if (appData.focusSystem.studyTimerRunning || appData.focusSystem.pomodoroTimerRunning) {
+    if (studyTimerHandler || pomodoroTimerHandler) {
         saveFocusData();
     }
 }, 30000);
@@ -3573,6 +3878,10 @@ setInterval(() => {
 
 document.addEventListener('DOMContentLoaded', function() {
     const focusModePage = document.getElementById('focusMode');
+    
+    // همیشه mobile navbar را setup کن
+    setupMobileNavbarToggle();
+    
     if (focusModePage && !focusModePage.classList.contains('hidden')) {
         setTimeout(() => {
             initializeFocusMode();
@@ -3581,53 +3890,95 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 console.log('📚 Focus Mode System Loaded Successfully');
-// مدیریت پنل کاربر - بدون دکمه ضربدر
+// مدیریت منو در پنل کاربر
+document.querySelectorAll('#userPanel [data-page]').forEach(item => {
+    item.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        document.querySelectorAll('#userPanel .sidebar-item').forEach(i => {
+            i.classList.remove('active');
+        });
+        
+        this.classList.add('active');
+        
+        document.querySelectorAll('#userPanel > div > main > div').forEach(div => {
+            div.classList.add('hidden');
+        });
+        
+        const pageId = this.getAttribute('data-page');
+        document.getElementById(pageId).classList.remove('hidden');
+        
+        document.getElementById('userPageTitle').textContent = this.querySelector('span').textContent;
+        
+        if (window.innerWidth < 1024) {
+            closeUserSidebar();
+        }
+    });
+});
+
+// ==================== مدیریت نوار کناری کاربر ====================
 document.addEventListener('DOMContentLoaded', function() {
+    // تعریف متغیرهای اصلی
     const userMenuToggle = document.getElementById('userMenuToggle');
-    const userSidebar = document.querySelector('#userPanel .sidebar');
+    const userSidebar = document.getElementById('userSidebar');
     const overlay = document.getElementById('userSidebarOverlay');
+    const closeUserSidebarBtn = document.getElementById('closeUserSidebarBtn');
     
     // باز کردن سایدبار در موبایل
     if (userMenuToggle) {
-        userMenuToggle.addEventListener('click', function() {
-            openSidebar();
+        userMenuToggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            openUserSidebar();
         });
     }
     
     // بستن با کلیک روی overlay
     if (overlay) {
         overlay.addEventListener('click', function() {
-            closeSidebar();
+            closeUserSidebar();
         });
     }
     
-    // بستن با کلیک روی محتوای اصلی در موبایل (اگر سایدبار باز است)
-    const mainContent = document.querySelector('#userPanel .main-content');
-    if (mainContent) {
-        mainContent.addEventListener('click', function() {
-            if (window.innerWidth < 1024 && userSidebar.classList.contains('translate-x-0')) {
-                closeSidebar();
-            }
+    // بستن با دکمه X
+    if (closeUserSidebarBtn) {
+        closeUserSidebarBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            closeUserSidebar();
         });
     }
     
     // تابع باز کردن سایدبار
-    function openSidebar() {
-        userSidebar.classList.remove('translate-x-full');
-        userSidebar.classList.add('translate-x-0');
-        overlay.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-    }
+    window.openUserSidebar = function() {
+        if (userSidebar) {
+            userSidebar.classList.remove('translate-x-full');
+            userSidebar.classList.add('translate-x-0');
+            if (overlay) overlay.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            console.log("📱 نوار کناری کاربری باز شد");
+        }
+    };
     
     // تابع بستن سایدبار
-    function closeSidebar() {
-        userSidebar.classList.remove('translate-x-0');
-        userSidebar.classList.add('translate-x-full');
-        overlay.classList.add('hidden');
-        document.body.style.overflow = 'auto';
-    }
+    window.closeUserSidebar = function() {
+        if (userSidebar) {
+            userSidebar.classList.remove('translate-x-0');
+            userSidebar.classList.add('translate-x-full');
+            if (overlay) overlay.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+            console.log("📱 نوار کناری کاربری بسته شد");
+        }
+    };
     
-    // مدیریت کلیک روی لینک‌های منو - این مهمه!
+    // تابع toggle برای استفاده از منوی همبرگر
+    window.toggleUserSidebar = function() {
+        if (userSidebar?.classList.contains('translate-x-full')) {
+            window.openUserSidebar();
+        } else {
+            window.closeUserSidebar();
+        }
+    };
+    
+    // مدیریت کلیک روی لینک‌های منو
     const sidebarLinks = document.querySelectorAll('#userPanel .sidebar-item');
     sidebarLinks.forEach(link => {
         link.addEventListener('click', function(e) {
@@ -3671,9 +4022,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 this.classList.add('active');
                 
-                // بستن سایدبار در موبایل (همینجا!)
+                // بستن سایدبار در موبایل
                 if (window.innerWidth < 1024) {
-                    closeSidebar();
+                    closeUserSidebar();
                 }
             }
         });
@@ -3681,8 +4032,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // بستن با کلید ESC
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && userSidebar.classList.contains('translate-x-0')) {
-            closeSidebar();
+        if (e.key === 'Escape' && userSidebar?.classList.contains('translate-x-0')) {
+            closeUserSidebar();
         }
     });
     
@@ -3690,21 +4041,198 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('resize', function() {
         if (window.innerWidth >= 1024) {
             // در دسکتاپ: سایدبار باز، overlay مخفی
-            userSidebar.classList.remove('translate-x-full');
-            userSidebar.classList.add('translate-x-0');
-            overlay.classList.add('hidden');
+            userSidebar?.classList.remove('translate-x-full');
+            userSidebar?.classList.add('translate-x-0');
+            overlay?.classList.add('hidden');
             document.body.style.overflow = 'auto';
         } else {
             // در موبایل: سایدبار بسته
-            userSidebar.classList.remove('translate-x-0');
-            userSidebar.classList.add('translate-x-full');
-            overlay.classList.add('hidden');
+            userSidebar?.classList.remove('translate-x-0');
+            userSidebar?.classList.add('translate-x-full');
+            overlay?.classList.add('hidden');
+            document.body.style.overflow = 'auto';
         }
     });
     
     // مقداردهی اولیه
     if (window.innerWidth >= 1024) {
-        userSidebar.classList.remove('translate-x-full');
-        userSidebar.classList.add('translate-x-0');
+        userSidebar?.classList.remove('translate-x-full');
+        userSidebar?.classList.add('translate-x-0');
     }
+    
+    console.log("✅ User sidebar management initialized");
+});
+
+// ==================== مدیریت نوار کناری ادمین ====================
+document.addEventListener('DOMContentLoaded', function() {
+    // تعریف متغیرهای اصلی
+    const adminMenuToggle = document.getElementById('adminMenuToggle');
+    const adminSidebar = document.getElementById('adminSidebar');
+    const adminOverlay = document.getElementById('adminSidebarOverlay');
+    const closeAdminSidebarBtn = document.getElementById('closeAdminSidebarBtn');
+    
+    // باز کردن سایدبار در موبایل
+    if (adminMenuToggle) {
+        adminMenuToggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            openAdminSidebar();
+        });
+    }
+    
+    // بستن با کلیک روی overlay
+    if (adminOverlay) {
+        adminOverlay.addEventListener('click', function() {
+            closeAdminSidebar();
+        });
+    }
+    
+    // بستن با دکمه X
+    if (closeAdminSidebarBtn) {
+        closeAdminSidebarBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            closeAdminSidebar();
+        });
+    }
+    
+    // تابع باز کردن سایدبار
+    window.openAdminSidebar = function() {
+        if (adminSidebar) {
+            adminSidebar.classList.remove('translate-x-full');
+            adminSidebar.classList.add('translate-x-0');
+            if (adminOverlay) adminOverlay.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            console.log("📱 نوار کناری ادمین باز شد");
+        }
+    };
+    
+    // تابع بستن سایدبار
+    window.closeAdminSidebar = function() {
+        if (adminSidebar) {
+            adminSidebar.classList.remove('translate-x-0');
+            adminSidebar.classList.add('translate-x-full');
+            if (adminOverlay) adminOverlay.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+            console.log("📱 نوار کناری ادمین بسته شد");
+        }
+    };
+    
+    // تابع toggle برای استفاده از منوی همبرگر
+    window.toggleAdminSidebar = function() {
+        if (adminSidebar?.classList.contains('translate-x-full')) {
+            window.openAdminSidebar();
+        } else {
+            window.closeAdminSidebar();
+        }
+    };
+    
+    // مدیریت کلیک روی لینک‌های منو
+    const adminSidebarLinks = document.querySelectorAll('#adminPanel .sidebar-item');
+    adminSidebarLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // تغییر صفحه
+            const pageId = this.getAttribute('data-page');
+            if (pageId) {
+                // مخفی کردن همه صفحات
+                document.querySelectorAll('#adminPanel .main-content main > div').forEach(div => {
+                    div.classList.add('hidden');
+                    div.classList.remove('fade-in');
+                });
+                
+                // نمایش صفحه انتخاب شده
+                const targetPage = document.getElementById(pageId);
+                if (targetPage) {
+                    targetPage.classList.remove('hidden');
+                    setTimeout(() => {
+                        targetPage.classList.add('fade-in');
+                    }, 10);
+                }
+                
+                // تغییر عنوان صفحه
+                const pageTitle = document.getElementById('adminPageTitle');
+                if (pageTitle) {
+                    const titles = {
+                        'adminDashboard': 'داشبورد مدیریت',
+                        'adminAddQuestion': 'افزودن سوال',
+                        'userManagement': 'مدیریت کاربران',
+                        'questionManagement': 'مدیریت سوالات',
+                        'examBuilder': 'ساخت آزمون',
+                        'systemSettings': 'تنظیمات سیستم'
+                    };
+                    pageTitle.textContent = titles[pageId] || 'پنل مدیریت';
+                }
+                
+                // آپدیت لینک فعال در منو
+                adminSidebarLinks.forEach(item => {
+                    item.classList.remove('active');
+                });
+                this.classList.add('active');
+                
+                // بستن سایدبار در موبایل
+                if (window.innerWidth < 1024) {
+                    closeAdminSidebar();
+                }
+            }
+        });
+    });
+    
+    // بستن با کلید ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && adminSidebar?.classList.contains('translate-x-0')) {
+            closeAdminSidebar();
+        }
+    });
+    
+    // مدیریت ریسایز پنجره
+    window.addEventListener('resize', function() {
+        if (window.innerWidth >= 1024) {
+            // در دسکتاپ: سایدبار باز، overlay مخفی
+            adminSidebar?.classList.remove('translate-x-full');
+            adminSidebar?.classList.add('translate-x-0');
+            adminOverlay?.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        } else {
+            // در موبایل: سایدبار بسته
+            adminSidebar?.classList.remove('translate-x-0');
+            adminSidebar?.classList.add('translate-x-full');
+            adminOverlay?.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+    });
+    
+    // مقداردهی اولیه
+    if (window.innerWidth >= 1024) {
+        adminSidebar?.classList.remove('translate-x-full');
+        adminSidebar?.classList.add('translate-x-0');
+    }
+    
+    console.log("✅ Admin sidebar management initialized");
+});
+
+// مدیریت منو در پنل ادمین (نسخه ساده‌تر)
+document.querySelectorAll('#adminPanel [data-page]').forEach(item => {
+    item.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        document.querySelectorAll('#adminPanel .sidebar-item').forEach(i => {
+            i.classList.remove('active');
+        });
+        
+        this.classList.add('active');
+        
+        document.querySelectorAll('#adminPanel .main-content main > div').forEach(div => {
+            div.classList.add('hidden');
+        });
+        
+        const pageId = this.getAttribute('data-page');
+        document.getElementById(pageId).classList.remove('hidden');
+        
+        document.getElementById('adminPageTitle').textContent = this.querySelector('span').textContent;
+        
+        // بستن سایدبار در موبایل
+        if (window.innerWidth < 1024) {
+            closeAdminSidebar();
+        }
+    });
 });
