@@ -2,6 +2,7 @@
 const adminCredentials = [
     { username: "Salar", password: "8711" },
     { username: "Miaad", password: "9248" },
+    { username: "Sonia", password: "8514" },
     { username: "Hasti", password: "1304" }
 ];
 
@@ -4236,3 +4237,4 @@ document.querySelectorAll('#adminPanel [data-page]').forEach(item => {
         }
     });
 });
+
