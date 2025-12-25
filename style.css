@@ -2217,43 +2217,161 @@
 .animate-float-up {
     animation: float-up 3s ease-in-out infinite;
 }
-/* استایل‌های سایدبار کاربر */
-#closeUserSidebar {
+
+/* Toggle Switch Styles */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+    flex-shrink: 0;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #d1d5db;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+input:checked + .toggle-slider {
+    background: linear-gradient(to right, #8B5CF6, #EC4899);
+}
+
+input:checked + .toggle-slider:before {
+    transform: translateX(26px);
+}
+
+input:focus + .toggle-slider {
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.25);
+}
+
+/* برای حالت کوچک‌تر */
+.toggle-switch-sm {
+    width: 50px;
+    height: 28px;
+}
+
+.toggle-switch-sm .toggle-slider:before {
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+}
+
+.toggle-switch-sm input:checked + .toggle-slider:before {
+    transform: translateX(22px);
+}
+
+/* Progress Bar Colors */
+.password-strength-weak {
+    background-color: #ef4444 !important;
+}
+
+.password-strength-fair {
+    background-color: #f59e0b !important;
+}
+
+.password-strength-good {
+    background-color: #10b981 !important;
+}
+
+.password-strength-strong {
+    background-color: #3b82f6 !important;
+}
+
+.password-strength-excellent {
+    background-color: #8b5cf6 !important;
+}
+
+/* Card Hover Effects */
+.card-hover {
     transition: all 0.3s ease;
-    z-index: 9999; /* بالاترین z-index */
 }
 
-#closeUserSidebar:hover {
-    transform: scale(1.1);
-    background-color: #9333ea; /* رنگ بنفش تیره‌تر */
+.card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
-/* استایل همبرگر منو */
-#userMenuToggle {
-    transition: transform 0.3s ease;
-}
-
-#userMenuToggle:hover {
-    transform: scale(1.1);
-}
-
-/* انیمیشن‌ها */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
+/* Avatar Upload Animation */
+@keyframes pulse {
+    0%, 100% {
         opacity: 1;
-        transform: translateY(0);
+    }
+    50% {
+        opacity: 0.7;
     }
 }
 
-.fade-in {
-    animation: fadeIn 0.3s ease-out;
+#avatarUpload:hover {
+    animation: pulse 2s infinite;
 }
 
-/* برای جلوگیری از اسکرول صفحه هنگام باز بودن سایدبار */
-body.sidebar-open {
-    overflow: hidden;
+/* Responsive Design */
+@media (max-width: 768px) {
+    .toggle-switch {
+        width: 50px;
+        height: 28px;
+    }
+    
+    .toggle-slider:before {
+        height: 20px;
+        width: 20px;
+        left: 4px;
+        bottom: 4px;
+    }
+    
+    input:checked + .toggle-slider:before {
+        transform: translateX(22px);
+    }
+}
+
+/* Gradient Text */
+.gradient-text {
+    background: linear-gradient(to right, #8B5CF6, #EC4899);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Form Input Focus */
+.input-focus:focus {
+    border-color: #8B5CF6;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+/* Success/Error States */
+.success-state {
+    border-color: #10b981;
+    background-color: #f0fdf4;
+}
+
+.error-state {
+    border-color: #ef4444;
+    background-color: #fef2f2;
 }
