@@ -2,7 +2,6 @@
 const adminCredentials = [
     { username: "Salar", password: "8711" },
     { username: "Miaad", password: "9248" },
-    { username: "Sonia", password: "8514" },
     { username: "Hasti", password: "1304" }
 ];
 
@@ -3232,9 +3231,20 @@ function updateStudyHistory() {
     
     // مرتب سازی بر اساس تاریخ (جدیدترین اول)
     const sortedTodayHistory = [...todayHistory].sort((a, b) => {
-        const timeA = new Date(`${a.date} ${a.startTime}`).getTime();
-        const timeB = new Date(`${b.date} ${b.startTime}`).getTime();
-        return timeB - timeA;
+        try {
+            // تبدیل تاریخ و زمان به timestamp
+            const dateA = a.date.split('/').map(Number);
+            const timeA = a.startTime.split(':').map(Number);
+            const dateB = b.date.split('/').map(Number);
+            const timeB = b.startTime.split(':').map(Number);
+            
+            const dateTimeA = new Date(1400 + dateA[0], dateA[1] - 1, dateA[2], timeA[0], timeA[1]);
+            const dateTimeB = new Date(1400 + dateB[0], dateB[1] - 1, dateB[2], timeB[0], timeB[1]);
+            
+            return dateTimeB.getTime() - dateTimeA.getTime();
+        } catch (error) {
+            return b.id - a.id; // استفاده از ID به عنوان fallback
+        }
     });
     
     sortedTodayHistory.forEach(entry => {
@@ -3242,6 +3252,18 @@ function updateStudyHistory() {
         
         const historyItem = document.createElement('div');
         historyItem.className = 'flex items-center justify-between p-3 border-b border-gray-100 hover:bg-gray-50 rounded-lg transition-all';
+        
+        // فرمت زمان: اگر ساعت بیشتر از 0 است، ساعت را هم نمایش بده
+        let durationText = '';
+        const hours = Math.floor(entry.duration / 3600);
+        const minutes = Math.floor((entry.duration % 3600) / 60);
+        
+        if (hours > 0) {
+            durationText = `${hours}:${minutes.toString().padStart(2, '0')}`;
+        } else {
+            durationText = `${minutes}:${Math.floor(entry.duration % 60).toString().padStart(2, '0')}`;
+        }
+        
         historyItem.innerHTML = `
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 flex items-center justify-center text-purple-600 text-sm font-bold">
@@ -3253,7 +3275,7 @@ function updateStudyHistory() {
                     ${entry.goal ? `<div class="text-xs text-emerald-600 mt-1"><i class="fas fa-bullseye ml-1"></i> ${entry.goal}</div>` : ''}
                 </div>
             </div>
-            <div class="text-sm text-gray-800 font-medium bg-gray-100 px-3 py-1 rounded-lg">${entry.durationFormatted}</div>
+            <div class="text-sm text-gray-800 font-medium bg-gray-100 px-3 py-1 rounded-lg">${durationText}</div>
         `;
         studyHistory.appendChild(historyItem);
     });
@@ -3358,7 +3380,11 @@ function renderWeeklyChart() {
         generateWeeklyDataFromHistory();
     }
     
+    // روزهای هفته
     const days = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
+    const shortDays = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
+    const mediumDays = ['شن', 'یک', 'دو', 'سه', 'چهار', 'پنج', 'جم'];
+    
     const today = new Date();
     const todayIndex = today.getDay();
     
@@ -3375,11 +3401,144 @@ function renderWeeklyChart() {
     const weeklyHours = appData.focusSystem.weeklyData || [0, 0, 0, 0, 0, 0, 0];
     const maxHours = Math.max(8, Math.ceil(Math.max(...weeklyHours) * 2) / 2);
     
+    // تشخیص اندازه صفحه
+    const isMobile = window.innerWidth < 768;
+    const isTablet = window.innerWidth >= 768 && window.innerWidth < 1024;
+    
+    // تنظیمات انعطاف‌پذیر بر اساس اندازه صفحه
+    const options = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { 
+                display: false 
+            },
+            tooltip: {
+                enabled: !isMobile, // در موبایل tooltip غیرفعال
+                rtl: true,
+                textDirection: 'rtl',
+                callbacks: {
+                    title: function(tooltipItems) {
+                        const dayIndex = tooltipItems[0].dataIndex;
+                        const dayName = days[dayIndex];
+                        const isToday = (dayIndex === persianTodayIndex);
+                        return `${dayName}${isToday ? ' (امروز)' : ''}`;
+                    },
+                    label: function(context) {
+                        const hours = context.parsed.y;
+                        if (hours === 0) return 'بدون مطالعه';
+                        return `⏱️ ${hours.toFixed(1)} ساعت مطالعه`;
+                    }
+                },
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                titleColor: '#1f2937',
+                bodyColor: '#4b5563',
+                borderColor: '#e5e7eb',
+                borderWidth: 1,
+                cornerRadius: 8,
+                padding: 12,
+                displayColors: false,
+                boxPadding: 6,
+                titleFont: {
+                    family: 'Vazir, sans-serif',
+                    size: isMobile ? 11 : 13,
+                    weight: 'bold'
+                },
+                bodyFont: {
+                    family: 'Vazir, sans-serif',
+                    size: isMobile ? 10 : 12
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: maxHours,
+                title: {
+                    display: false
+                },
+                ticks: {
+                    callback: function(value) {
+                        return isMobile ? value + 'س' : value + ' ساعت';
+                    },
+                    stepSize: maxHours <= 8 ? 1 : Math.ceil(maxHours / 6),
+                    font: { 
+                        family: 'Vazir, sans-serif',
+                        size: isMobile ? 9 : 11
+                    },
+                    color: '#6b7280',
+                    padding: isMobile ? 4 : 8,
+                    maxTicksLimit: isMobile ? 5 : 8
+                },
+                grid: { 
+                    color: 'rgba(0, 0, 0, 0.05)',
+                    drawBorder: false
+                }
+            },
+            x: {
+                ticks: {
+                    maxRotation: isMobile ? 0 : 45,
+                    minRotation: isMobile ? 0 : 45,
+                    autoSkip: false,
+                    font: { 
+                        family: 'Vazir, sans-serif', 
+                        size: isMobile ? 10 : 11,
+                        weight: 'bold'
+                    },
+                    color: (context) => {
+                        const isToday = context.index === persianTodayIndex;
+                        return isToday ? '#8b5cf6' : '#4b5563';
+                    },
+                    padding: isMobile ? 5 : 10,
+                    callback: function(value, index) {
+                        // در موبایل و تبلت روزهای مخفف نمایش داده شود
+                        if (isMobile) {
+                            return shortDays[index];
+                        } else if (isTablet) {
+                            return mediumDays[index];
+                        }
+                        return days[index];
+                    }
+                },
+                grid: { 
+                    display: false,
+                    drawBorder: false
+                }
+            }
+        },
+        layout: {
+            padding: {
+                top: isMobile ? 5 : 10,
+                right: isMobile ? 5 : 10,
+                bottom: isMobile ? 20 : 30,
+                left: isMobile ? 5 : 10
+            }
+        },
+        interaction: {
+            intersect: false,
+            mode: 'index',
+        },
+        animation: {
+            duration: isMobile ? 500 : 800,
+            easing: 'easeOutQuart'
+        }
+    };
+    
+    // انتخاب labels مناسب بر اساس اندازه صفحه
+    let chartLabels;
+    if (isMobile) {
+        chartLabels = shortDays;
+    } else if (isTablet) {
+        chartLabels = mediumDays;
+    } else {
+        chartLabels = days;
+    }
+    
     // ایجاد نمودار جدید
     window.weeklyChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: days,
+            labels: chartLabels,
             datasets: [{
                 label: 'ساعت مطالعه',
                 data: weeklyHours,
@@ -3413,159 +3572,33 @@ function renderWeeklyChart() {
                     // حاشیه بر اساس ساعات
                     if (hours >= 6) return 'rgb(16, 185, 129)';
                     if (hours >= 3) return 'rgb(245, 158, 11)';
-                    if (hours > 0) return 'rgb(239, 68, 68)';
                     return 'rgb(209, 213, 219)';
                 },
-                borderWidth: 2,
-                borderRadius: 8,
+                borderWidth: isMobile ? 0.5 : 1,
+                borderRadius: isMobile ? 4 : 6,
                 borderSkipped: false,
-                barPercentage: 0.7,
+                barPercentage: isMobile ? 0.5 : 0.6,
+                categoryPercentage: isMobile ? 0.6 : 0.7
             }]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    rtl: true,
-                    textDirection: 'rtl',
-                    callbacks: {
-                        title: function(tooltipItems) {
-                            const dayIndex = tooltipItems[0].dataIndex;
-                            const dayName = days[dayIndex];
-                            const isToday = (dayIndex === persianTodayIndex);
-                            return `${dayName}${isToday ? ' (امروز)' : ''}`;
-                        },
-                        label: function(context) {
-                            const hours = context.parsed.y;
-                            const dayIndex = context.dataIndex;
-                            const timeSlots = appData.focusSystem.timeSlots?.[dayIndex] || [];
-                            
-                            const filledSlots = timeSlots.filter(slot => slot > 0).length;
-                            const totalMinutes = hours * 60;
-                            const minutes = Math.floor(totalMinutes % 60);
-                            
-                            const labels = [];
-                            
-                            if (hours === 0) {
-                                labels.push('بدون مطالعه در این روز');
-                            } else {
-                                labels.push(`⏱️ ${hours.toFixed(1)} ساعت مطالعه`);
-                                
-                                if (minutes > 0) {
-                                    labels.push(`⏱️ (${hours.toFixed(0)} ساعت و ${minutes} دقیقه)`);
-                                }
-                                
-                                labels.push(`🔢 ${filledSlots} بازه نیم‌ساعتی از ۴۸ بازه`);
-                                
-                                const slotPercentage = Math.round((filledSlots / 48) * 100);
-                                labels.push(`📊 ${slotPercentage}% از روز پر شده`);
-                                
-                                if (filledSlots > 0) {
-                                    const sampleSlots = [];
-                                    for (let i = 0; i < Math.min(filledSlots, 3); i++) {
-                                        const hour = Math.floor((i * 30) / 60);
-                                        const minute = (i * 30) % 60;
-                                        sampleSlots.push(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
-                                    }
-                                    labels.push(`🕐 نمونه بازه‌های پر: ${sampleSlots.join('، ')}${filledSlots > 3 ? '...' : ''}`);
-                                }
-                            }
-                            
-                            return labels;
-                        }
-                    },
-                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                    titleColor: '#1f2937',
-                    bodyColor: '#4b5563',
-                    borderColor: '#e5e7eb',
-                    borderWidth: 1,
-                    cornerRadius: 8,
-                    padding: 12,
-                    displayColors: true,
-                    boxPadding: 6,
-                    titleFont: {
-                        family: 'Vazir, sans-serif',
-                        size: 14,
-                        weight: 'bold'
-                    },
-                    bodyFont: {
-                        family: 'Vazir, sans-serif',
-                        size: 12
-                    },
-                    footerFont: {
-                        family: 'Vazir, sans-serif',
-                        size: 10
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: maxHours,
-                    title: {
-                        display: true,
-                        text: 'ساعت مطالعه',
-                        font: { 
-                            family: 'Vazir, sans-serif',
-                            weight: 'bold',
-                            size: 12
-                        },
-                        color: '#6b7280',
-                        padding: { top: 10, bottom: 10 }
-                    },
-                    ticks: {
-                        callback: function(value) {
-                            return value + ' ساعت';
-                        },
-                        stepSize: 1,
-                        font: { 
-                            family: 'Vazir, sans-serif',
-                            size: 11
-                        },
-                        color: '#6b7280',
-                        padding: 8
-                    },
-                    grid: { 
-                        color: 'rgba(0, 0, 0, 0.05)',
-                        drawBorder: false,
-                        drawTicks: true
-                    }
-                },
-                x: {
-                    ticks: {
-                        autoSkip: false,
-                        maxRotation: 0,
-                        font: { 
-                            family: 'Vazir, sans-serif', 
-                            size: 12,
-                            weight: 'bold'
-                        },
-                        color: (context) => {
-                            const isToday = context.index === persianTodayIndex;
-                            return isToday ? '#8b5cf6' : '#4b5563';
-                        },
-                        padding: 10
-                    },
-                    grid: { 
-                        display: false,
-                        drawBorder: false
-                    }
-                }
-            },
-            interaction: {
-                intersect: false,
-                mode: 'index',
-            },
-            animation: {
-                duration: 1000,
-                easing: 'easeOutQuart'
-            }
-        }
+        options: options
     });
     
     updateWeeklyStats();
+}
+
+// اضافه کردن event listener برای resize
+if (!window.chartResizeHandler) {
+    window.chartResizeHandler = function() {
+        if (window.weeklyChartInstance) {
+            setTimeout(() => {
+                window.weeklyChartInstance.destroy();
+                renderWeeklyChart();
+            }, 100);
+        }
+    };
+    
+    window.addEventListener('resize', window.chartResizeHandler);
 }
 
 function updateWeeklyStats() {
@@ -3606,10 +3639,15 @@ function updateTotalStats() {
 }
 
 function refreshChart() {
-    generateWeeklyDataFromHistory();
-    renderWeeklyChart();
-    updateWeeklyStats();
-    showNotification('📊 نمودار هفتگی بروزرسانی شد', 'success');
+    try {
+        generateWeeklyDataFromHistory();
+        renderWeeklyChart();
+        updateWeeklyStats();
+        showNotification('📊 نمودار هفتگی بروزرسانی شد', 'success');
+    } catch (error) {
+        console.error('خطا در بروزرسانی نمودار:', error);
+        showNotification('❌ خطا در بروزرسانی نمودار', 'error');
+    }
 }
 
 function updateChartFromTimer() {
@@ -3623,17 +3661,132 @@ function updateChartFromTimer() {
         generateWeeklyDataFromHistory();
         
         if (window.weeklyChartInstance) {
-            const todayIndex = new Date().getDay();
-            let persianTodayIndex = todayIndex - 1;
-            if (persianTodayIndex < 0) persianTodayIndex = 6;
-            
-            const dailyHours = dailySeconds / 3600;
-            window.weeklyChartInstance.data.datasets[0].data[persianTodayIndex] = dailyHours;
-            
-            window.weeklyChartInstance.update();
-            updateWeeklyStats();
+            try {
+                const todayIndex = new Date().getDay();
+                let persianTodayIndex = todayIndex - 1;
+                if (persianTodayIndex < 0) persianTodayIndex = 6;
+                
+                const dailyHours = dailySeconds / 3600;
+                window.weeklyChartInstance.data.datasets[0].data[persianTodayIndex] = dailyHours;
+                
+                window.weeklyChartInstance.update('none'); // بدون انیمیشن
+                updateWeeklyStats();
+            } catch (error) {
+                console.warn('خطا در آپدیت نمودار:', error);
+            }
         }
     }
+}
+
+// ==================== IMPROVED DATA SAVING MECHANISM ====================
+
+function loadFocusData() {
+    try {
+        const saved = localStorage.getItem('focusSystemData');
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            const today = new Date().toLocaleDateString('fa-IR');
+            
+            // همیشه weeklyData را مقداردهی اولیه کن
+            if (!parsed.weeklyData) {
+                parsed.weeklyData = [0, 0, 0, 0, 0, 0, 0];
+            }
+            
+            if (parsed.lastSavedDate !== today) {
+                console.log('📅 روز جدید - ریست داده‌های روزانه');
+                
+                // روز جدید - نگهداری داده‌های دائمی
+                Object.keys(parsed).forEach(key => {
+                    if (key !== 'lastSavedDate' && key !== 'dailyTotalSeconds' && key !== 'applesCollected') {
+                        appData.focusSystem[key] = parsed[key];
+                    }
+                });
+                
+                // ریست مقادیر روزانه
+                appData.focusSystem.dailyTotalSeconds = 0;
+                appData.focusSystem.applesCollected = 0;
+                appData.focusSystem.pomodoroState = 'focus';
+                appData.focusSystem.pomodoroRemainingSeconds = appData.focusSystem.pomodoroFocusMinutes * 60;
+                
+                // ریست todayHours برای دروس
+                if (appData.focusSystem.subjects) {
+                    appData.focusSystem.subjects.forEach(subject => {
+                        subject.todayHours = 0;
+                    });
+                }
+                
+                appData.focusSystem.lastSavedDate = today;
+                
+                // ذخیره فوری داده‌های جدید
+                saveFocusData();
+            } else {
+                console.log('📅 همان روز - بارگذاری داده‌های موجود');
+                // همان روز - بارگذاری همه داده‌ها
+                Object.assign(appData.focusSystem, parsed);
+            }
+        } else {
+            console.log('📅 اولین بارگذاری - ایجاد داده‌های جدید');
+            // اولین بار - تنظیم مقادیر پیش‌فرض
+            initializeDefaultFocusData();
+        }
+    } catch (e) {
+        console.error('⚠️ خطا در بارگذاری داده‌های تمرکز:', e);
+        // در صورت خطا، داده‌های پیش‌فرض را بارگذاری کن
+        initializeDefaultFocusData();
+    }
+}
+
+function initializeDefaultFocusData() {
+    appData.focusSystem = {
+        subjects: [],
+        studyHistory: [],
+        pomodoroFocusMinutes: 25,
+        pomodoroBreakMinutes: 5,
+        pomodoroState: 'focus',
+        pomodoroRemainingSeconds: 25 * 60,
+        dailyTotalSeconds: 0,
+        weeklyData: [0, 0, 0, 0, 0, 0, 0],
+        totalStudyHours: 0,
+        streakDays: 0,
+        applesCollected: 0,
+        applesStored: 0,
+        lastSavedDate: new Date().toLocaleDateString('fa-IR')
+    };
+}
+
+function saveFocusData() {
+    try {
+        // به روزرسانی تاریخ ذخیره‌سازی
+        appData.focusSystem.lastSavedDate = new Date().toLocaleDateString('fa-IR');
+        
+        // آماده‌سازی داده‌ها برای ذخیره‌سازی
+        const dataToSave = {
+            ...appData.focusSystem,
+            // اطمینان از وجود همه فیلدهای ضروری
+            subjects: appData.focusSystem.subjects || [],
+            studyHistory: appData.focusSystem.studyHistory || [],
+            weeklyData: appData.focusSystem.weeklyData || [0, 0, 0, 0, 0, 0, 0]
+        };
+        
+        localStorage.setItem('focusSystemData', JSON.stringify(dataToSave));
+        console.log('💾 داده‌های تمرکز ذخیره شدند');
+    } catch (e) {
+        console.error('⚠️ خطا در ذخیره‌سازی داده‌های تمرکز:', e);
+    }
+}
+
+// ذخیره‌سازی خودکار با تایمینگ بهتر
+let saveTimeout = null;
+function scheduleAutoSave() {
+    if (saveTimeout) {
+        clearTimeout(saveTimeout);
+    }
+    
+    saveTimeout = setTimeout(() => {
+        if (studyTimerHandler || pomodoroTimerHandler) {
+            saveFocusData();
+        }
+    }, 10000); // هر 10 ثانیه اگر تایمر فعال است
 }
 
 // ==================== INITIALIZATION ====================
@@ -4237,4 +4390,947 @@ document.querySelectorAll('#adminPanel [data-page]').forEach(item => {
         }
     });
 });
+// ==================== مدیریت پاپ‌آپ اطلاعات کاربری در هدر ====================
 
+let userInfoPopupOpen = false;
+
+function toggleUserInfoPopup() {
+    const popup = document.getElementById('userInfoPopup');
+    if (!popup) return;
+    
+    if (userInfoPopupOpen) {
+        closeUserInfoPopup();
+    } else {
+        openUserInfoPopup();
+    }
+}
+
+function openUserInfoPopup() {
+    const popup = document.getElementById('userInfoPopup');
+    if (!popup) return;
+    
+    // بارگذاری اطلاعات کاربر
+    updateHeaderPopupInfo();
+    
+    popup.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    userInfoPopupOpen = true;
+}
+
+function closeUserInfoPopup() {
+    const popup = document.getElementById('userInfoPopup');
+    if (!popup) return;
+    
+    popup.classList.add('hidden');
+    document.body.style.overflow = '';
+    userInfoPopupOpen = false;
+}
+
+function navigateToProfile() {
+    closeUserInfoPopup();
+    // هدایت به صفحه پروفایل
+    if (document.getElementById('userPanel')) {
+        showPage('userSettings');
+    }
+}
+
+// ==================== مدیریت هدر کاربری ====================
+
+function updateHeaderUserInfo() {
+    const user = JSON.parse(localStorage.getItem('currentUser')) || {};
+    const profile = JSON.parse(localStorage.getItem('userProfile')) || {};
+    
+    // آپدیت نام در نوار کناری و هدر
+    const userNameElements = document.querySelectorAll('.user-name-display');
+    userNameElements.forEach(el => {
+        if (profile.name && profile.name.trim()) {
+            el.textContent = profile.name;
+        } else if (user.username) {
+            el.textContent = user.username;
+        }
+    });
+    
+    // آپدیت آواتار در هدر
+    updateHeaderAvatar();
+    
+    // آپدیت اطلاعات در نوار کناری
+    updateSidebarUserInfo();
+}
+
+function updateHeaderPopupInfo() {
+    const user = JSON.parse(localStorage.getItem('currentUser')) || {};
+    const profile = JSON.parse(localStorage.getItem('userProfile')) || {};
+    const questions = JSON.parse(localStorage.getItem('userQuestions') || '[]');
+    
+    // آپدیت اطلاعات در پاپ‌آپ
+    document.getElementById('headerUserName').textContent = 
+        profile.name || user.username || 'کاربر عادی';
+    
+    // تعیین نقش کاربر
+    let roleText = 'کاربر عادی';
+    if (user.role === 'admin') roleText = 'مدیر سیستم';
+    else if (user.role === 'moderator') roleText = 'ناظر';
+    
+    document.getElementById('headerUserRole').textContent = roleText;
+    
+    // ایمیل
+    document.getElementById('headerUserEmail').textContent = 
+        profile.email || user.email || 'ایمیل تنظیم نشده';
+    
+    // امتیازات
+    const totalScore = questions.reduce((sum, q) => {
+        return sum + (q.status === 'approved' ? (q.score || 0) : 0);
+    }, 0);
+    document.getElementById('headerUserScore').textContent = 
+        `${totalScore.toLocaleString('fa-IR')} امتیاز`;
+    
+    // آمار سوالات
+    const approvedCount = questions.filter(q => q.status === 'approved').length;
+    document.getElementById('headerQuestionStats').textContent = 
+        `${approvedCount} سوال تایید شده از ${questions.length}`;
+    
+    // تاریخ عضویت (اگر وجود دارد)
+    if (user.joinDate) {
+        document.getElementById('headerJoinDate').textContent = user.joinDate;
+    }
+}
+
+function updateSidebarUserInfo() {
+    const user = JSON.parse(localStorage.getItem('currentUser')) || {};
+    const profile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+    
+    // آپدیت نام در نوار کناری
+    const sidebarName = document.querySelector('#userSidebar .user-name-display');
+    if (sidebarName) {
+        sidebarName.textContent = profile.name || user.username || 'کاربر عادی';
+    }
+    
+    // آپدیت آواتار در نوار کناری
+    const sidebarAvatar = document.querySelector('#userSidebar .h-20.w-20');
+    if (sidebarAvatar && profile.avatar) {
+        const icon = sidebarAvatar.querySelector('i');
+        const existingImg = sidebarAvatar.querySelector('img');
+        
+        if (existingImg) {
+            existingImg.src = profile.avatar;
+        } else {
+            if (icon) icon.style.display = 'none';
+            const img = document.createElement('img');
+            img.src = profile.avatar;
+            img.className = 'h-full w-full object-cover rounded-full';
+            sidebarAvatar.prepend(img);
+        }
+    }
+}
+
+// ==================== مدیریت آواتار در هدر ====================
+
+function updateHeaderAvatar() {
+    const headerAvatarBtn = document.getElementById('headerAvatarBtn');
+    const adminHeaderAvatarBtn = document.getElementById('adminHeaderAvatarBtn');
+    const profile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+    
+    // آپدیت آواتار برای پنل کاربر عادی
+    if (headerAvatarBtn) {
+        updateSingleAvatar(headerAvatarBtn, profile.avatar, 'user');
+    }
+    
+    // آپدیت آواتار برای پنل ادمین
+    if (adminHeaderAvatarBtn) {
+        updateSingleAvatar(adminHeaderAvatarBtn, profile.avatar, 'admin');
+    }
+    
+    // آپدیت آواتار در پاپ‌آپ
+    updatePopupAvatar(profile.avatar);
+}
+
+function updateSingleAvatar(element, avatarUrl, type = 'user') {
+    // حذف محتوای قبلی
+    element.innerHTML = '';
+    
+    if (avatarUrl) {
+        // نمایش تصویر
+        const img = document.createElement('img');
+        img.src = avatarUrl;
+        img.className = 'h-full w-full object-cover rounded-full';
+        element.appendChild(img);
+    } else {
+        // نمایش آیکون پیش‌فرض
+        const icon = document.createElement('i');
+        icon.className = type === 'admin' ? 'fas fa-user-shield' : 'fas fa-user';
+        element.appendChild(icon);
+    }
+}
+
+function updatePopupAvatar(avatarUrl) {
+    const headerAvatar = document.getElementById('headerAvatar');
+    if (!headerAvatar) return;
+    
+    // حذف محتوای قبلی
+    headerAvatar.innerHTML = '';
+    
+    if (avatarUrl) {
+        const img = document.createElement('img');
+        img.src = avatarUrl;
+        img.className = 'h-full w-full object-cover rounded-full';
+        headerAvatar.appendChild(img);
+    } else {
+        const icon = document.createElement('i');
+        icon.className = 'fas fa-user text-4xl text-purple-600';
+        headerAvatar.appendChild(icon);
+    }
+}
+
+// ==================== مدیریت تنظیمات پروفایل ====================
+
+// تابع نمایش/مخفی کردن رمز عبور
+function togglePassword(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    
+    const icon = input.parentElement.querySelector('i');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
+
+// بررسی قدرت رمز عبور
+document.getElementById('newPassword')?.addEventListener('input', function(e) {
+    const password = e.target.value;
+    const strengthBar = document.getElementById('passwordStrength');
+    const strengthBarDetailed = document.getElementById('passwordStrengthBar');
+    
+    if (!strengthBar && !strengthBarDetailed) return;
+    
+    // بررسی شرایط
+    const hasLength = password.length >= 8;
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecial = /[^A-Za-z0-9]/.test(password);
+    
+    // محاسبه قدرت
+    let strength = 0;
+    if (hasLength) strength += 25;
+    if (hasUppercase) strength += 25;
+    if (hasNumber) strength += 25;
+    if (hasSpecial) strength += 25;
+    
+    // آپدیت progress bar ساده
+    if (strengthBar) {
+        strengthBar.style.width = `${strength}%`;
+        
+        // تغییر رنگ بر اساس قدرت
+        if (strength <= 25) {
+            strengthBar.className = 'h-full rounded-full transition-all duration-300 bg-red-500';
+        } else if (strength <= 50) {
+            strengthBar.className = 'h-full rounded-full transition-all duration-300 bg-amber-500';
+        } else if (strength <= 75) {
+            strengthBar.className = 'h-full rounded-full transition-all duration-300 bg-emerald-500';
+        } else {
+            strengthBar.className = 'h-full rounded-full transition-all duration-300 bg-purple-500';
+        }
+    }
+    
+    // آپدیت progress bar دقیق
+    if (strengthBarDetailed) {
+        strengthBarDetailed.style.width = `${strength}%`;
+        
+        const strengthText = document.getElementById('passwordStrengthText');
+        if (strengthText) {
+            if (strength <= 25) {
+                strengthBarDetailed.className = 'h-full rounded-full transition-all duration-300 bg-red-500';
+                strengthText.textContent = 'ضعیف';
+                strengthText.className = 'text-red-600';
+            } else if (strength <= 50) {
+                strengthBarDetailed.className = 'h-full rounded-full transition-all duration-300 bg-amber-500';
+                strengthText.textContent = 'متوسط';
+                strengthText.className = 'text-amber-600';
+            } else if (strength <= 75) {
+                strengthBarDetailed.className = 'h-full rounded-full transition-all duration-300 bg-emerald-500';
+                strengthText.textContent = 'خوب';
+                strengthText.className = 'text-emerald-600';
+            } else {
+                strengthBarDetailed.className = 'h-full rounded-full transition-all duration-300 bg-purple-500';
+                strengthText.textContent = 'عالی';
+                strengthText.className = 'text-purple-600';
+            }
+        }
+        
+        // آپدیت چک‌مارک‌ها
+        updateCheckmark('lengthCheck', hasLength);
+        updateCheckmark('uppercaseCheck', hasUppercase);
+        updateCheckmark('numberCheck', hasNumber);
+        updateCheckmark('specialCheck', hasSpecial);
+    }
+});
+
+// آپدیت چک‌مارک‌ها
+function updateCheckmark(elementId, isValid) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    
+    const icon = element.querySelector('i');
+    
+    if (isValid) {
+        icon.classList.remove('fa-times', 'text-rose-500');
+        icon.classList.add('fa-check', 'text-emerald-500');
+        element.classList.add('text-emerald-600');
+        element.classList.remove('text-rose-600');
+    } else {
+        icon.classList.remove('fa-check', 'text-emerald-500');
+        icon.classList.add('fa-times', 'text-rose-500');
+        element.classList.remove('text-emerald-600');
+        element.classList.add('text-rose-600');
+    }
+}
+
+// بررسی تطابق رمز عبور
+document.getElementById('confirmPassword')?.addEventListener('input', function(e) {
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = e.target.value;
+    
+    const matchDiv = document.getElementById('passwordMatch');
+    const mismatchDiv = document.getElementById('passwordMismatch');
+    
+    if (confirmPassword === '') {
+        if (matchDiv) matchDiv.classList.add('hidden');
+        if (mismatchDiv) mismatchDiv.classList.add('hidden');
+        return;
+    }
+    
+    if (newPassword === confirmPassword) {
+        if (matchDiv) {
+            matchDiv.classList.remove('hidden');
+            matchDiv.innerHTML = '<i class="fas fa-check-circle ml-1 text-emerald-500"></i><span class="text-emerald-600">رمز عبور مطابقت دارد</span>';
+        }
+        if (mismatchDiv) mismatchDiv.classList.add('hidden');
+    } else {
+        if (mismatchDiv) {
+            mismatchDiv.classList.remove('hidden');
+            mismatchDiv.innerHTML = '<i class="fas fa-times-circle ml-1 text-rose-500"></i><span class="text-rose-600">رمز عبور مطابقت ندارد</span>';
+        }
+        if (matchDiv) matchDiv.classList.add('hidden');
+    }
+});
+
+// بررسی نام کاربری
+document.getElementById('profileUsername')?.addEventListener('input', function(e) {
+    const username = e.target.value.trim();
+    const availabilityDiv = document.getElementById('usernameAvailability');
+    const errorDiv = document.getElementById('usernameError');
+    
+    if (!username) {
+        if (availabilityDiv) availabilityDiv.classList.add('hidden');
+        if (errorDiv) errorDiv.classList.add('hidden');
+        return;
+    }
+    
+    // اعتبارسنجی نام کاربری
+    const isValid = /^[a-zA-Z0-9_]{3,20}$/.test(username);
+    
+    if (!isValid) {
+        if (errorDiv) {
+            errorDiv.innerHTML = '<i class="fas fa-times-circle ml-1 text-rose-500"></i> نام کاربری باید ۳ تا ۲۰ کاراکتر و فقط شامل حروف انگلیسی، اعداد و زیرخط باشد';
+            errorDiv.classList.remove('hidden');
+        }
+        if (availabilityDiv) availabilityDiv.classList.add('hidden');
+        return;
+    }
+    
+    // شبیه‌سازی چک سرور
+    setTimeout(() => {
+        const takenUsernames = ['admin', 'user', 'test', 'moderator'];
+        const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        const isAvailable = !takenUsernames.includes(username.toLowerCase()) || 
+                           username.toLowerCase() === currentUser.username?.toLowerCase();
+        
+        if (isAvailable) {
+            if (availabilityDiv) {
+                availabilityDiv.classList.remove('hidden');
+                availabilityDiv.innerHTML = '<i class="fas fa-check-circle ml-1 text-emerald-500"></i><span class="text-emerald-600">نام کاربری آزاد است</span>';
+            }
+            if (errorDiv) errorDiv.classList.add('hidden');
+        } else {
+            if (errorDiv) {
+                errorDiv.innerHTML = '<i class="fas fa-times-circle ml-1 text-rose-500"></i> این نام کاربری قبلاً انتخاب شده است';
+                errorDiv.classList.remove('hidden');
+            }
+            if (availabilityDiv) availabilityDiv.classList.add('hidden');
+        }
+    }, 500);
+});
+
+// ==================== مدیریت آپلود آواتار ====================
+
+document.addEventListener('DOMContentLoaded', function() {
+    const avatarInput = document.getElementById('avatarInput');
+    const avatarUpload = document.getElementById('avatarUpload');
+    
+    // آپلود آواتار از دکمه
+    if (avatarUpload) {
+        avatarUpload.addEventListener('click', function() {
+            if (avatarInput) avatarInput.click();
+        });
+    }
+    
+    // آپلود آواتار از input file
+    if (avatarInput) {
+        avatarInput.addEventListener('change', function(e) {
+            handleAvatarUpload(e.target.files[0]);
+        });
+    }
+});
+
+function handleAvatarUpload(file) {
+    if (!file) return;
+    
+    // اعتبارسنجی
+    if (!file.type.startsWith('image/')) {
+        showNotification('لطفاً یک فایل تصویری انتخاب کنید', 'error');
+        return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+        showNotification('حجم فایل نباید بیشتر از ۵ مگابایت باشد', 'error');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        // ذخیره در localStorage
+        const profile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+        profile.avatar = event.target.result;
+        localStorage.setItem('userProfile', JSON.stringify(profile));
+        
+        // آپدیت نمایش در تمام بخش‌ها
+        updateAllAvatarDisplays(event.target.result);
+        
+        showNotification('تصویر پروفایل با موفقیت آپلود شد', 'success');
+    };
+    
+    reader.readAsDataURL(file);
+}
+
+function updateAllAvatarDisplays(avatarUrl) {
+    // آپدیت در پروفایل
+    const avatarDiv = document.getElementById('profileAvatar');
+    if (avatarDiv) {
+        const icon = avatarDiv.querySelector('i');
+        const oldImg = avatarDiv.querySelector('img');
+        
+        if (oldImg) oldImg.remove();
+        if (icon) icon.style.display = 'none';
+        
+        const img = document.createElement('img');
+        img.src = avatarUrl;
+        img.className = 'h-full w-full object-cover rounded-full';
+        avatarDiv.prepend(img);
+    }
+    
+    // آپدیت در هدر و سایر بخش‌ها
+    updateHeaderAvatar();
+    updateSidebarUserInfo();
+}
+
+// حذف آواتار
+function removeAvatar() {
+    if (!confirm('آیا از حذف تصویر پروفایل مطمئن هستید؟')) return;
+    
+    const avatarDiv = document.getElementById('profileAvatar');
+    if (avatarDiv) {
+        const img = avatarDiv.querySelector('img');
+        const icon = avatarDiv.querySelector('i');
+        
+        if (img) img.remove();
+        if (icon) icon.style.display = 'flex';
+    }
+    
+    // حذف از localStorage
+    const profile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+    delete profile.avatar;
+    localStorage.setItem('userProfile', JSON.stringify(profile));
+    
+    // آپدیت تمام نمایش‌ها
+    updateHeaderAvatar();
+    updateSidebarUserInfo();
+    
+    showNotification('تصویر پروفایل حذف شد', 'info');
+}
+
+// ==================== مدیریت فرم پروفایل ====================
+
+document.getElementById('profileForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const profileData = {
+        name: document.getElementById('profileName').value.trim(),
+        username: document.getElementById('profileUsername').value.trim(),
+        email: document.getElementById('profileEmail').value.trim(),
+        phone: document.getElementById('profilePhone').value.trim(),
+        grade: document.getElementById('profileGrade').value,
+        field: document.getElementById('profileField').value,
+        bio: document.getElementById('profileBio').value.trim(),
+        avatar: JSON.parse(localStorage.getItem('userProfile') || '{}').avatar || null
+    };
+    
+    // اعتبارسنجی
+    if (!profileData.name) {
+        showNotification('لطفاً نام و نام خانوادگی را وارد کنید', 'error');
+        return;
+    }
+    
+    if (!profileData.username) {
+        showNotification('لطفاً نام کاربری را وارد کنید', 'error');
+        return;
+    }
+    
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(profileData.username)) {
+        showNotification('نام کاربری معتبر نیست', 'error');
+        return;
+    }
+    
+    if (profileData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileData.email)) {
+        showNotification('ایمیل معتبر نیست', 'error');
+        return;
+    }
+    
+    // ذخیره در localStorage
+    localStorage.setItem('userProfile', JSON.stringify(profileData));
+    
+    // آپدیت کاربر فعلی
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    currentUser.username = profileData.username;
+    currentUser.email = profileData.email;
+    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    
+    // آپدیت تمام نمایش‌ها
+    updateHeaderUserInfo();
+    updateHeaderPopupInfo();
+    
+    showNotification('تغییرات پروفایل با موفقیت ذخیره شد', 'success');
+});
+
+// ==================== مدیریت فرم تغییر رمز عبور ====================
+
+document.getElementById('passwordForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const currentPass = document.getElementById('currentPassword').value;
+    const newPass = document.getElementById('newPassword').value;
+    const confirmPass = document.getElementById('confirmPassword').value;
+    
+    // اعتبارسنجی
+    if (!currentPass) {
+        showNotification('لطفاً رمز عبور فعلی را وارد کنید', 'error');
+        return;
+    }
+    
+    if (newPass.length < 8) {
+        showNotification('رمز عبور جدید باید حداقل ۸ کاراکتر باشد', 'error');
+        return;
+    }
+    
+    if (newPass !== confirmPass) {
+        showNotification('رمز عبور جدید و تکرار آن مطابقت ندارند', 'error');
+        return;
+    }
+    
+    // شبیه‌سازی تغییر رمز عبور (در حالت واقعی باید با API سرور ارتباط برقرار شود)
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    
+    // در حالت واقعی، اینجا باید رمز عبور فعلی چک شود
+    // فعلاً فقط ذخیره رمز جدید (به صورت غیرامن)
+    currentUser.password = newPass; // توجه: این فقط برای نمونه است!
+    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    
+    showNotification('رمز عبور با موفقیت تغییر یافت', 'success');
+    
+    // ریست کردن فرم
+    document.getElementById('passwordForm').reset();
+    
+    // ریست کردن نمایش قدرت رمز
+    const strengthBar = document.getElementById('passwordStrength');
+    if (strengthBar) {
+        strengthBar.style.width = '0%';
+    }
+    
+    const strengthBarDetailed = document.getElementById('passwordStrengthBar');
+    if (strengthBarDetailed) {
+        strengthBarDetailed.style.width = '0%';
+        const strengthText = document.getElementById('passwordStrengthText');
+        if (strengthText) {
+            strengthText.textContent = 'ضعیف';
+            strengthText.className = 'text-red-600';
+        }
+    }
+});
+
+// ==================== مدیریت تنظیمات اعلان‌ها ====================
+
+function saveNotificationSettings() {
+    const settings = {
+        email: document.getElementById('emailNotifications').checked,
+        questions: document.getElementById('questionNotifications').checked,
+        scores: document.getElementById('scoreNotifications').checked,
+        weekly: document.getElementById('weeklyReportNotifications').checked
+    };
+    
+    localStorage.setItem('notificationSettings', JSON.stringify(settings));
+    showNotification('تنظیمات اعلان‌ها ذخیره شد', 'success');
+}
+
+function loadNotificationSettings() {
+    const saved = localStorage.getItem('notificationSettings');
+    if (saved) {
+        const settings = JSON.parse(saved);
+        if (document.getElementById('emailNotifications')) document.getElementById('emailNotifications').checked = settings.email;
+        if (document.getElementById('questionNotifications')) document.getElementById('questionNotifications').checked = settings.questions;
+        if (document.getElementById('scoreNotifications')) document.getElementById('scoreNotifications').checked = settings.scores;
+        if (document.getElementById('weeklyReportNotifications')) document.getElementById('weeklyReportNotifications').checked = settings.weekly;
+    }
+}
+
+// ==================== مدیریت تنظیمات حریم خصوصی ====================
+
+function loadPrivacySettings() {
+    const saved = localStorage.getItem('privacySettings');
+    if (saved) {
+        const settings = JSON.parse(saved);
+        if (document.getElementById('profileVisibility')) document.getElementById('profileVisibility').checked = settings.profile;
+        if (document.getElementById('activityVisibility')) document.getElementById('activityVisibility').checked = settings.activity;
+        if (document.getElementById('onlineStatusVisibility')) document.getElementById('onlineStatusVisibility').checked = settings.online;
+    }
+}
+
+function savePrivacySettings() {
+    const settings = {
+        profile: document.getElementById('profileVisibility').checked,
+        activity: document.getElementById('activityVisibility').checked,
+        online: document.getElementById('onlineStatusVisibility').checked
+    };
+    
+    localStorage.setItem('privacySettings', JSON.stringify(settings));
+    showNotification('تنظیمات حریم خصوصی ذخیره شد', 'success');
+}
+
+// صادر کردن اطلاعات
+function exportData() {
+    const userData = {
+        profile: JSON.parse(localStorage.getItem('userProfile') || '{}'),
+        questions: JSON.parse(localStorage.getItem('userQuestions') || '[]'),
+        scores: JSON.parse(localStorage.getItem('userScores') || '[]'),
+        settings: {
+            notifications: JSON.parse(localStorage.getItem('notificationSettings') || '{}'),
+            privacy: JSON.parse(localStorage.getItem('privacySettings') || '{}')
+        },
+        exportDate: new Date().toLocaleString('fa-IR')
+    };
+    
+    const dataStr = JSON.stringify(userData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `sempa-profile-${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showNotification('اطلاعات پروفایل با موفقیت صادر شد', 'success');
+}
+
+// ==================== مدیریت مودال حذف حساب ====================
+
+function showDeleteAccountModal() {
+    const modal = document.getElementById('deleteAccountModal');
+    if (!modal) return;
+    
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeDeleteAccountModal() {
+    const modal = document.getElementById('deleteAccountModal');
+    if (!modal) return;
+    
+    modal.classList.add('hidden');
+    document.body.style.overflow = '';
+    
+    const confirmText = document.getElementById('deleteConfirmText');
+    if (confirmText) confirmText.value = '';
+    
+    const errorDiv = document.getElementById('deleteTextError');
+    if (errorDiv) errorDiv.classList.add('hidden');
+}
+
+function confirmDeleteAccount() {
+    const confirmText = document.getElementById('deleteConfirmText').value;
+    const errorDiv = document.getElementById('deleteTextError');
+    
+    if (confirmText !== 'حذف حساب کاربری') {
+        errorDiv.classList.remove('hidden');
+        return;
+    }
+    
+    // حذف اطلاعات از localStorage
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('userProfile');
+    localStorage.removeItem('userQuestions');
+    localStorage.removeItem('userScores');
+    localStorage.removeItem('notificationSettings');
+    localStorage.removeItem('privacySettings');
+    localStorage.removeItem('rememberMe');
+    
+    // بستن مودال
+    closeDeleteAccountModal();
+    
+    // نمایش پیام و بازگشت به صفحه ورود
+    showNotification('حساب کاربری شما با موفقیت حذف شد', 'info');
+    
+    setTimeout(() => {
+        location.reload();
+    }, 2000);
+}
+
+// ==================== بارگذاری اطلاعات پروفایل ====================
+
+function loadProfileData() {
+    const saved = localStorage.getItem('userProfile');
+    const user = JSON.parse(localStorage.getItem('currentUser')) || {};
+    
+    if (saved) {
+        const profileData = JSON.parse(saved);
+        
+        // پر کردن فرم با اطلاعات ذخیره شده
+        if (document.getElementById('profileName')) 
+            document.getElementById('profileName').value = profileData.name || '';
+        
+        if (document.getElementById('profileUsername')) 
+            document.getElementById('profileUsername').value = profileData.username || user.username || '';
+        
+        if (document.getElementById('profileEmail')) 
+            document.getElementById('profileEmail').value = profileData.email || user.email || '';
+        
+        if (document.getElementById('profilePhone')) 
+            document.getElementById('profilePhone').value = profileData.phone || '';
+        
+        if (document.getElementById('profileGrade')) 
+            document.getElementById('profileGrade').value = profileData.grade || '';
+        
+        if (document.getElementById('profileField')) 
+            document.getElementById('profileField').value = profileData.field || '';
+        
+        if (document.getElementById('profileBio')) 
+            document.getElementById('profileBio').value = profileData.bio || '';
+        
+        // بارگذاری آواتار
+        if (profileData.avatar) {
+            const avatarDiv = document.getElementById('profileAvatar');
+            if (avatarDiv) {
+                const icon = avatarDiv.querySelector('i');
+                const oldImg = avatarDiv.querySelector('img');
+                
+                if (oldImg) oldImg.remove();
+                if (icon) icon.style.display = 'none';
+                
+                const img = document.createElement('img');
+                img.src = profileData.avatar;
+                img.className = 'h-full w-full object-cover rounded-full';
+                avatarDiv.prepend(img);
+            }
+        }
+    } else {
+        // اگر اطلاعات ذخیره شده‌ای نیست، از کاربر فعلی استفاده کن
+        if (user.username && document.getElementById('profileUsername')) {
+            document.getElementById('profileUsername').value = user.username;
+        }
+        if (user.email && document.getElementById('profileEmail')) {
+            document.getElementById('profileEmail').value = user.email;
+        }
+    }
+    
+    // بارگذاری تنظیمات
+    loadNotificationSettings();
+    loadPrivacySettings();
+    
+    // آپدیت نمایش
+    updateHeaderUserInfo();
+}
+
+// ==================== مدیریت نوتیفیکیشن هدر ====================
+
+// شبیه‌سازی نوتیفیکیشن‌ها
+function getNotifications() {
+    return [
+        { id: 1, text: "سوال شما تایید شد", time: "۵ دقیقه پیش", read: false, type: "success" },
+        { id: 2, text: "۳۰ امتیاز دریافت کردید", time: "۱ ساعت پیش", read: false, type: "score" },
+        { id: 3, text: "کاربر جدیدی از شما تشکر کرد", time: "۲ ساعت پیش", read: true, type: "info" },
+        { id: 4, text: "آزمون جدید اضافه شد", time: "۱ روز پیش", read: true, type: "exam" },
+        { id: 5, text: "به روزرسانی سیستم", time: "۲ روز پیش", read: true, type: "system" }
+    ];
+}
+
+// نمایش نوتیفیکیشن‌ها در پاپ‌آپ (می‌تواند توسعه داده شود)
+function showNotificationsPopup() {
+    const notifications = getNotifications();
+    const unreadCount = notifications.filter(n => !n.read).length;
+    
+    // آپدیت شماره نوتیفیکیشن‌ها
+    document.querySelectorAll('.absolute.top-0.left-0').forEach(badge => {
+        badge.textContent = unreadCount;
+    });
+    
+    // در اینجا می‌توان پاپ‌آپ نوتیفیکیشن‌ها را نمایش داد
+    console.log('نمایش نوتیفیکیشن‌ها:', notifications);
+}
+
+// ==================== مدیریت وضعیت آنلاین ====================
+
+function updateOnlineStatus() {
+    const onlineStatus = navigator.onLine;
+    const statusIndicators = document.querySelectorAll('.bg-emerald-500');
+    
+    statusIndicators.forEach(indicator => {
+        if (onlineStatus) {
+            indicator.classList.remove('bg-gray-400');
+            indicator.classList.add('bg-emerald-500');
+        } else {
+            indicator.classList.remove('bg-emerald-500');
+            indicator.classList.add('bg-gray-400');
+        }
+    });
+}
+
+// ==================== مدیریت رویدادهای کلیک ====================
+
+document.addEventListener('click', function(e) {
+    // بستن پاپ‌آپ اطلاعات کاربری با کلیک خارج از آن
+    if (userInfoPopupOpen && e.target.id === 'userInfoPopup') {
+        closeUserInfoPopup();
+    }
+    
+    // بستن مودال حذف حساب با کلیک خارج از آن
+    const deleteModal = document.getElementById('deleteAccountModal');
+    if (deleteModal && !deleteModal.classList.contains('hidden') && e.target === deleteModal) {
+        closeDeleteAccountModal();
+    }
+});
+
+// ==================== بارگذاری اولیه ====================
+
+document.addEventListener('DOMContentLoaded', function() {
+    // بارگذاری اطلاعات پروفایل
+    loadProfileData();
+    
+    // بارگذاری نوتیفیکیشن‌ها
+    showNotificationsPopup();
+    
+    // تنظیم وضعیت آنلاین
+    updateOnlineStatus();
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    
+    // رویدادهای ذخیره تنظیمات حریم خصوصی
+    document.getElementById('profileVisibility')?.addEventListener('change', savePrivacySettings);
+    document.getElementById('activityVisibility')?.addEventListener('change', savePrivacySettings);
+    document.getElementById('onlineStatusVisibility')?.addEventListener('change', savePrivacySettings);
+    
+    // رویدادهای ذخیره تنظیمات اعلان‌ها
+    document.getElementById('emailNotifications')?.addEventListener('change', saveNotificationSettings);
+    document.getElementById('questionNotifications')?.addEventListener('change', saveNotificationSettings);
+    document.getElementById('scoreNotifications')?.addEventListener('change', saveNotificationSettings);
+    document.getElementById('weeklyReportNotifications')?.addEventListener('change', saveNotificationSettings);
+    
+    // رویداد کلیک برای آیکون نوتیفیکیشن
+    document.querySelectorAll('.fa-bell').forEach(bell => {
+        bell.parentElement.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showNotificationsPopup();
+            // در اینجا می‌توان پاپ‌آپ نوتیفیکیشن‌ها را باز کرد
+        });
+    });
+});
+
+// ==================== تابع کمکی نمایش نوتیفیکیشن ====================
+
+function showNotification(message, type = 'info') {
+    const notification = document.getElementById('notification');
+    if (!notification) return;
+    
+    // پاک کردن نوتیفیکیشن قبلی
+    notification.innerHTML = '';
+    
+    // ایجاد نوتیفیکیشن جدید
+    const notificationDiv = document.createElement('div');
+    notificationDiv.className = `notification-${type} p-4 rounded-lg shadow-lg mb-3 animate-fade-in`;
+    
+    // آیکون بر اساس نوع
+    let icon = 'fa-info-circle';
+    if (type === 'success') icon = 'fa-check-circle';
+    else if (type === 'error') icon = 'fa-times-circle';
+    else if (type === 'warning') icon = 'fa-exclamation-triangle';
+    
+    notificationDiv.innerHTML = `
+        <div class="flex items-center">
+            <i class="fas ${icon} ml-3 text-lg"></i>
+            <span>${message}</span>
+        </div>
+    `;
+    
+    notification.appendChild(notificationDiv);
+    
+    // نمایش نوتیفیکیشن
+    notification.classList.remove('hidden');
+    
+    // مخفی کردن خودکار بعد از 5 ثانیه
+    setTimeout(() => {
+        notificationDiv.classList.add('animate-fade-out');
+        setTimeout(() => {
+            if (notification.contains(notificationDiv)) {
+                notification.removeChild(notificationDiv);
+            }
+            if (notification.children.length === 0) {
+                notification.classList.add('hidden');
+            }
+        }, 300);
+    }, 5000);
+}
+
+// ==================== تابع کمکی برای نمایش صفحات ====================
+
+function showPage(pageId) {
+    // این تابع باید در فایل اصلی script.js تعریف شود
+    // اینجا فقط نمونه‌ای از آن ارائه می‌شود
+    const pages = document.querySelectorAll('[id$="Page"], [id$="Dashboard"], [id$="Settings"], [id$="Management"]');
+    pages.forEach(page => {
+        if (page.id === pageId) {
+            page.classList.remove('hidden');
+            page.classList.add('fade-in');
+        } else {
+            page.classList.add('hidden');
+            page.classList.remove('fade-in');
+        }
+    });
+    
+    // آپدیت عنوان صفحه
+    const pageTitle = document.getElementById('userPageTitle') || document.getElementById('adminPageTitle');
+    if (pageTitle) {
+        const titles = {
+            'userDashboard': 'داشبورد کاربری',
+            'addQuestion': 'افزودن سوال',
+            'userQuestions': 'سوالات من',
+            'userScores': 'امتیازات من',
+            'focusMode': 'حالت فوکوس',
+            'userSettings': 'تنظیمات پروفایل'
+        };
+        pageTitle.textContent = titles[pageId] || 'سمپا';
+    }
+}
