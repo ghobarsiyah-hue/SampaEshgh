@@ -5334,3 +5334,670 @@ function showPage(pageId) {
         pageTitle.textContent = titles[pageId] || 'سمپا';
     }
 }
+// ==================== ایونت‌لیسنرهای ذخیره تغییرات ====================
+
+// 1. ذخیره خودکار تغییرات نام کاربری
+document.getElementById('profileUsername')?.addEventListener('blur', function(e) {
+    const username = e.target.value.trim();
+    if (!username) return;
+    
+    const profile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+    if (profile.username === username) return; // اگر تغییر نکرده، ذخیره نکن
+    
+    profile.username = username;
+    localStorage.setItem('userProfile', JSON.stringify(profile));
+    
+    // آپدیت کاربر فعلی
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    currentUser.username = username;
+    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    
+    // آپدیت نمایش
+    updateHeaderUserInfo();
+    showNotification('نام کاربری ذخیره شد', 'success');
+});
+
+// 2. ذخیره خودکار تغییرات نام
+document.getElementById('profileName')?.addEventListener('blur', function(e) {
+    const name = e.target.value.trim();
+    if (!name) return;
+    
+    const profile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+    if (profile.name === name) return;
+    
+    profile.name = name;
+    localStorage.setItem('userProfile', JSON.stringify(profile));
+    
+    // آپدیت نمایش
+    updateHeaderUserInfo();
+    showNotification('نام ذخیره شد', 'success');
+});
+
+// 3. ذخیره خودکار تغییرات ایمیل
+document.getElementById('profileEmail')?.addEventListener('blur', function(e) {
+    const email = e.target.value.trim();
+    if (!email) return;
+    
+    // اعتبارسنجی ایمیل
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        showNotification('فرمت ایمیل نامعتبر است', 'error');
+        return;
+    }
+    
+    const profile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+    if (profile.email === email) return;
+    
+    profile.email = email;
+    localStorage.setItem('userProfile', JSON.stringify(profile));
+    
+    // آپدیت کاربر فعلی
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    currentUser.email = email;
+    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    
+    showNotification('ایمیل ذخیره شد', 'success');
+});
+
+// 4. ذخیره خودکار تغییرات شماره تماس
+document.getElementById('profilePhone')?.addEventListener('blur', function(e) {
+    const phone = e.target.value.trim();
+    
+    const profile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+    if (profile.phone === phone) return;
+    
+    profile.phone = phone;
+    localStorage.setItem('userProfile', JSON.stringify(profile));
+    
+    showNotification('شماره تماس ذخیره شد', 'success');
+});
+
+// 5. ذخیره خودکار تغییرات پایه درسی
+document.getElementById('profileGrade')?.addEventListener('change', function(e) {
+    const grade = e.target.value;
+    
+    const profile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+    if (profile.grade === grade) return;
+    
+    profile.grade = grade;
+    localStorage.setItem('userProfile', JSON.stringify(profile));
+    
+    showNotification('پایه درسی ذخیره شد', 'success');
+});
+
+// 6. ذخیره خودکار تغییرات رشته تحصیلی
+document.getElementById('profileField')?.addEventListener('change', function(e) {
+    const field = e.target.value;
+    
+    const profile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+    if (profile.field === field) return;
+    
+    profile.field = field;
+    localStorage.setItem('userProfile', JSON.stringify(profile));
+    
+    showNotification('رشته تحصیلی ذخیره شد', 'success');
+});
+
+// 7. ذخیره خودکار تغییرات بیوگرافی
+document.getElementById('profileBio')?.addEventListener('blur', function(e) {
+    const bio = e.target.value.trim();
+    
+    // محدودیت طول بیوگرافی
+    if (bio.length > 200) {
+        showNotification('بیوگرافی نباید بیشتر از ۲۰۰ کاراکتر باشد', 'error');
+        e.target.value = bio.substring(0, 200);
+        return;
+    }
+    
+    const profile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+    if (profile.bio === bio) return;
+    
+    profile.bio = bio;
+    localStorage.setItem('userProfile', JSON.stringify(profile));
+    
+    showNotification('بیوگرافی ذخیره شد', 'success');
+});
+
+// 8. ذخیره خودکار تغییرات تنظیمات اعلان‌ها
+document.getElementById('emailNotifications')?.addEventListener('change', function(e) {
+    saveNotificationSetting('email', e.target.checked);
+});
+
+document.getElementById('questionNotifications')?.addEventListener('change', function(e) {
+    saveNotificationSetting('questions', e.target.checked);
+});
+
+document.getElementById('scoreNotifications')?.addEventListener('change', function(e) {
+    saveNotificationSetting('scores', e.target.checked);
+});
+
+document.getElementById('weeklyReportNotifications')?.addEventListener('change', function(e) {
+    saveNotificationSetting('weekly', e.target.checked);
+});
+
+function saveNotificationSetting(type, value) {
+    const settings = JSON.parse(localStorage.getItem('notificationSettings') || '{}');
+    settings[type] = value;
+    localStorage.setItem('notificationSettings', JSON.stringify(settings));
+    
+    // نمایش پیام فقط برای اولین بار
+    if (!notificationSettingsSaved) {
+        showNotification('تنظیمات اعلان‌ها ذخیره شد', 'success');
+        notificationSettingsSaved = true;
+    }
+}
+
+// 9. ذخیره خودکار تغییرات تنظیمات حریم خصوصی
+document.getElementById('profileVisibility')?.addEventListener('change', function(e) {
+    savePrivacySetting('profile', e.target.checked);
+});
+
+document.getElementById('activityVisibility')?.addEventListener('change', function(e) {
+    savePrivacySetting('activity', e.target.checked);
+});
+
+document.getElementById('onlineStatusVisibility')?.addEventListener('change', function(e) {
+    savePrivacySetting('online', e.target.checked);
+});
+
+function savePrivacySetting(type, value) {
+    const settings = JSON.parse(localStorage.getItem('privacySettings') || '{}');
+    settings[type] = value;
+    localStorage.setItem('privacySettings', JSON.stringify(settings));
+    
+    // نمایش پیام فقط برای اولین بار
+    if (!privacySettingsSaved) {
+        showNotification('تنظیمات حریم خصوصی ذخیره شد', 'success');
+        privacySettingsSaved = true;
+    }
+}
+
+// 10. ذخیره خودکار آپلود تصویر
+document.getElementById('avatarInput')?.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // اعتبارسنجی
+    if (!file.type.startsWith('image/')) {
+        showNotification('لطفاً یک فایل تصویری انتخاب کنید', 'error');
+        return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+        showNotification('حجم فایل نباید بیشتر از ۵ مگابایت باشد', 'error');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        // ذخیره در localStorage
+        const profile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+        profile.avatar = event.target.result;
+        localStorage.setItem('userProfile', JSON.stringify(profile));
+        
+        // آپدیت نمایش در تمام بخش‌ها
+        updateAllAvatarDisplays(event.target.result);
+        
+        showNotification('تصویر پروفایل با موفقیت آپلود شد', 'success');
+    };
+    
+    reader.readAsDataURL(file);
+});
+
+// 11. ذخیره رمز عبور (فقط بعد از تأیید کامل)
+let passwordFormChanged = false;
+
+document.getElementById('currentPassword')?.addEventListener('input', function() {
+    passwordFormChanged = true;
+});
+
+document.getElementById('newPassword')?.addEventListener('input', function() {
+    passwordFormChanged = true;
+});
+
+document.getElementById('confirmPassword')?.addEventListener('input', function() {
+    passwordFormChanged = true;
+});
+
+// 12. ایونت‌لیسنرهای کی‌داون برای ذخیره سریع
+document.addEventListener('keydown', function(e) {
+    // Ctrl+S یا Cmd+S برای ذخیره
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        saveAllProfileChanges();
+    }
+    
+    // Escape برای لغو و بازگشت
+    if (e.key === 'Escape') {
+        if (userInfoPopupOpen) {
+            closeUserInfoPopup();
+        }
+        if (document.getElementById('deleteAccountModal') && 
+            !document.getElementById('deleteAccountModal').classList.contains('hidden')) {
+            closeDeleteAccountModal();
+        }
+    }
+});
+
+// 13. ذخیره همه تغییرات به صورت دستی
+function saveAllProfileChanges() {
+    // جمع‌آوری تمام داده‌های فرم
+    const profileData = {
+        name: document.getElementById('profileName')?.value.trim() || '',
+        username: document.getElementById('profileUsername')?.value.trim() || '',
+        email: document.getElementById('profileEmail')?.value.trim() || '',
+        phone: document.getElementById('profilePhone')?.value.trim() || '',
+        grade: document.getElementById('profileGrade')?.value || '',
+        field: document.getElementById('profileField')?.value || '',
+        bio: document.getElementById('profileBio')?.value.trim() || '',
+        avatar: JSON.parse(localStorage.getItem('userProfile') || '{}').avatar || null
+    };
+    
+    // اعتبارسنجی
+    let hasError = false;
+    
+    if (profileData.name && profileData.name.length < 2) {
+        showNotification('نام باید حداقل ۲ کاراکتر باشد', 'error');
+        hasError = true;
+    }
+    
+    if (profileData.username && !/^[a-zA-Z0-9_]{3,20}$/.test(profileData.username)) {
+        showNotification('نام کاربری معتبر نیست', 'error');
+        hasError = true;
+    }
+    
+    if (profileData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileData.email)) {
+        showNotification('ایمیل معتبر نیست', 'error');
+        hasError = true;
+    }
+    
+    if (profileData.bio.length > 200) {
+        showNotification('بیوگرافی نباید بیشتر از ۲۰۰ کاراکتر باشد', 'error');
+        hasError = true;
+    }
+    
+    if (hasError) return;
+    
+    // ذخیره در localStorage
+    const currentProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+    const finalProfile = { ...currentProfile, ...profileData };
+    localStorage.setItem('userProfile', JSON.stringify(finalProfile));
+    
+    // آپدیت کاربر فعلی
+    if (profileData.username || profileData.email) {
+        const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+        if (profileData.username) currentUser.username = profileData.username;
+        if (profileData.email) currentUser.email = profileData.email;
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    }
+    
+    // آپدیت نمایش
+    updateHeaderUserInfo();
+    updateHeaderPopupInfo();
+    
+    showNotification('✅ تمام تغییرات با موفقیت ذخیره شد', 'success');
+}
+
+// 14. ایونت‌لیسنر برای فرم اصلی (به عنوان پشتیبان)
+document.getElementById('profileForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    saveAllProfileChanges();
+});
+
+// 15. ایونت‌لیسنر برای تغییرات در حین تایپ (Auto-save)
+let autoSaveTimeout;
+const autoSaveDelay = 2000; // 2 ثانیه
+
+function setupAutoSave() {
+    const inputs = [
+        'profileName', 'profileUsername', 'profileEmail', 'profilePhone', 
+        'profileBio'
+    ];
+    
+    inputs.forEach(inputId => {
+        const input = document.getElementById(inputId);
+        if (input) {
+            input.addEventListener('input', function() {
+                clearTimeout(autoSaveTimeout);
+                autoSaveTimeout = setTimeout(() => {
+                    const value = this.value.trim();
+                    const profile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+                    
+                    // فقط اگر مقدار تغییر کرده و خالی نیست
+                    if (value && profile[inputId.replace('profile', '').toLowerCase()] !== value) {
+                        profile[inputId.replace('profile', '').toLowerCase()] = value;
+                        localStorage.setItem('userProfile', JSON.stringify(profile));
+                        
+                        // برای نام و نام کاربری، نمایش را هم آپدیت کن
+                        if (inputId === 'profileName' || inputId === 'profileUsername') {
+                            updateHeaderUserInfo();
+                        }
+                        
+                        console.log(`Auto-saved: ${inputId}`);
+                    }
+                }, autoSaveDelay);
+            });
+        }
+    });
+}
+
+// 16. ایونت‌لیسنر برای انتخاب‌ها (select)
+const selects = ['profileGrade', 'profileField'];
+selects.forEach(selectId => {
+    const select = document.getElementById(selectId);
+    if (select) {
+        select.addEventListener('change', function() {
+            const value = this.value;
+            const profile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+            const key = selectId.replace('profile', '').toLowerCase();
+            
+            if (profile[key] !== value) {
+                profile[key] = value;
+                localStorage.setItem('userProfile', JSON.stringify(profile));
+                
+                showNotification(`${this.options[this.selectedIndex].text} ذخیره شد`, 'success');
+            }
+        });
+    }
+});
+
+// 17. ایونت‌لیسنر برای تغییرات عمده (با دکمه ذخیره)
+document.getElementById('saveProfileBtn')?.addEventListener('click', function() {
+    saveAllProfileChanges();
+});
+
+// 18. ایونت‌لیسنر برای بازگشت به عقب
+document.getElementById('cancelProfileBtn')?.addEventListener('click', function() {
+    if (confirm('آیا از لغو تغییرات مطمئن هستید؟ تغییرات ذخیره نشده از بین می‌روند.')) {
+        loadProfileData(); // بارگذاری مجدد داده‌های ذخیره شده
+        showNotification('تغییرات لغو شدند', 'info');
+    }
+});
+
+// 19. مدیریت وضعیت dirty فرم
+let isFormDirty = false;
+
+function checkFormDirty() {
+    const inputs = [
+        'profileName', 'profileUsername', 'profileEmail', 'profilePhone', 
+        'profileBio', 'profileGrade', 'profileField'
+    ];
+    
+    const currentProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+    
+    inputs.forEach(inputId => {
+        const input = document.getElementById(inputId);
+        if (input) {
+            const key = inputId.replace('profile', '').toLowerCase();
+            const currentValue = input.type === 'select-one' ? input.value : input.value.trim();
+            const savedValue = currentProfile[key] || '';
+            
+            if (currentValue !== savedValue) {
+                isFormDirty = true;
+                return;
+            }
+        }
+    });
+    
+    // برای آواتار
+    const avatarInput = document.getElementById('avatarInput');
+    if (avatarInput && avatarInput.files.length > 0) {
+        isFormDirty = true;
+    }
+    
+    return isFormDirty;
+}
+
+// 20. هشدار هنگام ترک صفحه با تغییرات ذخیره نشده
+window.addEventListener('beforeunload', function(e) {
+    if (isFormDirty) {
+        const message = 'تغییرات ذخیره نشده‌ای دارید. آیا مطمئن هستید که می‌خواهید صفحه را ترک کنید؟';
+        e.returnValue = message;
+        return message;
+    }
+});
+
+// 21. ایونت‌لیسنر برای دکمه ذخیره سریع در هدر
+document.getElementById('quickSaveBtn')?.addEventListener('click', function() {
+    saveAllProfileChanges();
+});
+
+// 22. ایونت‌لیسنرهای initialization
+document.addEventListener('DOMContentLoaded', function() {
+    // Setup auto-save
+    setupAutoSave();
+    
+    // Load initial data
+    loadProfileData();
+    
+    // Setup form dirty checking
+    const formInputs = document.querySelectorAll('#profileForm input, #profileForm select, #profileForm textarea');
+    formInputs.forEach(input => {
+        input.addEventListener('input', function() {
+            isFormDirty = true;
+        });
+        input.addEventListener('change', function() {
+            isFormDirty = true;
+        });
+    });
+    
+    // Setup keyboard shortcuts
+    setupKeyboardShortcuts();
+});
+
+// 23. تنظیمات کلیدهای میانبر
+function setupKeyboardShortcuts() {
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+Enter برای ذخیره
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            if (document.getElementById('profileForm')) {
+                saveAllProfileChanges();
+            }
+        }
+        
+        // Ctrl+E برای ویرایش سریع
+        if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+            e.preventDefault();
+            document.getElementById('profileName')?.focus();
+        }
+    });
+}
+
+// 24. متغیرهای global برای جلوگیری از نمایش مکرر پیام
+let notificationSettingsSaved = false;
+let privacySettingsSaved = false;
+
+// 25. تابع reset flags
+function resetSaveFlags() {
+    notificationSettingsSaved = false;
+    privacySettingsSaved = false;
+    isFormDirty = false;
+}
+
+// 26. ایونت‌لیسنر برای بازدید مجدد از فرم
+document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+        // وقتی کاربر به صفحه برمی‌گردد، داده‌ها را refresh کن
+        loadProfileData();
+        resetSaveFlags();
+    }
+});
+
+// 27. ایونت‌لیسنر برای تغییرات در local storage (sync بین تب‌ها)
+window.addEventListener('storage', function(e) {
+    if (e.key === 'userProfile' || e.key === 'currentUser') {
+        // داده‌ها در تب دیگری تغییر کرده‌اند
+        loadProfileData();
+        showNotification('داده‌های پروفایل به‌روزرسانی شدند', 'info');
+    }
+});
+
+// 28. ذخیره آخرین زمان ویرایش
+function updateLastEditTime() {
+    const lastEdit = {
+        timestamp: new Date().getTime(),
+        date: new Date().toLocaleString('fa-IR')
+    };
+    localStorage.setItem('profileLastEdit', JSON.stringify(lastEdit));
+}
+
+// 29. ایونت‌لیسنر برای تمام تغییرات مهم
+function attachSaveListeners() {
+    const saveTriggers = [
+        'profileName', 'profileUsername', 'profileEmail', 'profilePhone',
+        'profileBio', 'profileGrade', 'profileField'
+    ];
+    
+    saveTriggers.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('change', updateLastEditTime);
+            if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+                element.addEventListener('blur', updateLastEditTime);
+            }
+        }
+    });
+}
+
+// 30. دکمه ذخیره و خروج
+document.getElementById('saveAndExitBtn')?.addEventListener('click', function() {
+    saveAllProfileChanges();
+    setTimeout(() => {
+        if (document.getElementById('userPanel')) {
+            showPage('userDashboard');
+        }
+    }, 500);
+});
+
+// ==================== تابع اصلی برای بارگذاری اولیه ====================
+
+function initializeProfileSettings() {
+    // بارگذاری داده‌ها
+    loadProfileData();
+    
+    // Setup auto-save
+    setupAutoSave();
+    
+    // Setup form dirty checking
+    const formInputs = document.querySelectorAll('#profileForm input, #profileForm select, #profileForm textarea');
+    formInputs.forEach(input => {
+        input.addEventListener('input', function() {
+            isFormDirty = true;
+        });
+        input.addEventListener('change', function() {
+            isFormDirty = true;
+        });
+    });
+    
+    // Setup keyboard shortcuts
+    setupKeyboardShortcuts();
+    
+    // Attach save listeners
+    attachSaveListeners();
+    
+    // نمایش آخرین زمان ویرایش
+    displayLastEditTime();
+    
+    console.log('Profile settings initialized');
+}
+
+// 31. نمایش آخرین زمان ویرایش
+function displayLastEditTime() {
+    const lastEdit = JSON.parse(localStorage.getItem('profileLastEdit') || '{}');
+    if (lastEdit.date) {
+        console.log(`آخرین ویرایش: ${lastEdit.date}`);
+        // می‌توانید این را در UI هم نمایش دهید
+        const lastEditElement = document.getElementById('lastEditTime');
+        if (lastEditElement) {
+            lastEditElement.textContent = `آخرین ویرایش: ${lastEdit.date}`;
+        }
+    }
+}
+
+// 32. ایونت‌لیسنر برای دکمه‌های عملیات سریع
+document.addEventListener('click', function(e) {
+    // دکمه ذخیره سریع در فرم
+    if (e.target.matches('.quick-save-btn, [data-action="quick-save"]')) {
+        e.preventDefault();
+        saveAllProfileChanges();
+    }
+    
+    // دکمه بازنشانی فرم
+    if (e.target.matches('.reset-form-btn, [data-action="reset"]')) {
+        e.preventDefault();
+        if (confirm('آیا می‌خواهید تمام تغییرات را بازنشانی کنید؟')) {
+            loadProfileData();
+            showNotification('فرم بازنشانی شد', 'info');
+            isFormDirty = false;
+        }
+    }
+});
+
+// 33. اجرای اولیه
+document.addEventListener('DOMContentLoaded', function() {
+    initializeProfileSettings();
+    
+    // Setup periodic auto-save (هر 30 ثانیه)
+    setInterval(() => {
+        if (isFormDirty) {
+            saveAllProfileChanges();
+            isFormDirty = false;
+        }
+    }, 30000);
+});
+
+// 34. ایونت‌لیسنر برای تغییر اندازه پنجره (responsive)
+window.addEventListener('resize', function() {
+    // اگر در حالت موبایل هستیم و فرم باز است، اسکرول را تنظیم کن
+    if (window.innerWidth < 768 && isFormDirty) {
+        const firstInput = document.querySelector('#profileForm input, #profileForm select, #profileForm textarea');
+        if (firstInput) {
+            firstInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+});
+
+// 35. ایونت‌لیسنر برای focus روی فرم
+document.getElementById('profileForm')?.addEventListener('focusin', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
+        // اضافه کردن کلاس focus
+        e.target.classList.add('focused-input');
+        
+        // نمایش راهنمای فیلد
+        const fieldName = e.target.id.replace('profile', '').replace(/([A-Z])/g, ' $1').trim();
+        showFieldHint(fieldName);
+    }
+});
+
+// 36. نمایش راهنمای فیلد
+function showFieldHint(fieldName) {
+    const hints = {
+        'Name': 'نام کامل خود را وارد کنید',
+        'Username': 'نام کاربری باید ۳-۲۰ کاراکتر و فقط شامل حروف انگلیسی، اعداد و زیرخط باشد',
+        'Email': 'ایمیل معتبر خود را وارد کنید',
+        'Phone': 'شماره موبایل خود را با ۰۹ شروع کنید',
+        'Bio': 'حداکثر ۲۰۰ کاراکتر',
+        'Grade': 'پایه تحصیلی خود را انتخاب کنید',
+        'Field': 'رشته تحصیلی خود را انتخاب کنید'
+    };
+    
+    const hintText = hints[fieldName] || '';
+    const hintElement = document.getElementById('fieldHint');
+    if (hintElement && hintText) {
+        hintElement.textContent = hintText;
+        hintElement.classList.remove('hidden');
+    }
+}
+
+// 37. مخفی کردن راهنمای فیلد
+document.getElementById('profileForm')?.addEventListener('focusout', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
+        e.target.classList.remove('focused-input');
+        
+        const hintElement = document.getElementById('fieldHint');
+        if (hintElement) {
+            hintElement.classList.add('hidden');
+        }
+    }
+});
