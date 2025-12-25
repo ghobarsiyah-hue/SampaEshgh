@@ -14,10 +14,247 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        /* استایل‌های Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+            flex-shrink: 0;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #d1d5db;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        input:checked + .toggle-slider {
+            background: linear-gradient(to right, #8B5CF6, #EC4899);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+
+        input:focus + .toggle-slider {
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.25);
+        }
+
+        @media (max-width: 768px) {
+            .toggle-switch {
+                width: 50px;
+                height: 28px;
+            }
+            
+            .toggle-slider:before {
+                height: 20px;
+                width: 20px;
+                left: 4px;
+                bottom: 4px;
+            }
+            
+            input:checked + .toggle-slider:before {
+                transform: translateX(22px);
+            }
+        }
+    </style>
 </head>
 <body class="bg-gradient-to-br from-gray-50 to-blue-50">
     <!-- اعلان‌ها -->
     <div id="notification" class="notification"></div>
+
+    <!-- Popup اطلاعات کاربری در هدر -->
+    <div id="userInfoPopup" class="hidden fixed inset-0 z-50 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Overlay -->
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" 
+                 onclick="closeUserInfoPopup()"></div>
+
+            <!-- محتوای Popup -->
+            <div class="inline-block align-bottom bg-white rounded-2xl text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <div class="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-white">👤 اطلاعات کاربری</h3>
+                        <button onclick="closeUserInfoPopup()" class="text-white hover:text-purple-200">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="bg-white px-6 py-6">
+                    <div class="flex flex-col items-center mb-6">
+                        <!-- آواتار کاربر -->
+                        <div class="relative mb-4">
+                            <div id="headerAvatar" class="h-24 w-24 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 flex items-center justify-center shadow-lg border-4 border-white overflow-hidden">
+                                <!-- تصویر آواتار -->
+                            </div>
+                        </div>
+                        
+                        <!-- اطلاعات کاربر -->
+                        <div class="text-center">
+                            <h4 id="headerUserName" class="text-xl font-bold text-gray-800 mb-1"></h4>
+                            <p id="headerUserRole" class="text-gray-600 mb-3"></p>
+                            
+                            <div class="inline-flex items-center bg-gradient-to-r from-purple-50 to-pink-50 px-4 py-2 rounded-full border border-purple-100">
+                                <i class="fas fa-coins text-amber-500 mr-2"></i>
+                                <span id="headerUserScore" class="text-sm font-medium text-purple-700">۰ امتیاز</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-center p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl">
+                            <div class="h-10 w-10 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 flex items-center justify-center text-purple-600 ml-3">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">ایمیل</p>
+                                <p id="headerUserEmail" class="text-sm font-medium text-gray-800"></p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl">
+                            <div class="h-10 w-10 rounded-full bg-gradient-to-r from-emerald-100 to-teal-100 flex items-center justify-center text-emerald-600 ml-3">
+                                <i class="fas fa-calendar-alt"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">تاریخ عضویت</p>
+                                <p id="headerJoinDate" class="text-sm font-medium text-gray-800"></p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl">
+                            <div class="h-10 w-10 rounded-full bg-gradient-to-r from-amber-100 to-yellow-100 flex items-center justify-center text-amber-600 ml-3">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">آمار سوالات</p>
+                                <p id="headerQuestionStats" class="text-sm font-medium text-gray-800">۰ سوال ارسال شده</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 pt-4 border-t border-gray-200">
+                        <button onclick="navigateToProfile()" 
+                                class="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-300 font-medium">
+                            <i class="fas fa-user-edit ml-2"></i>
+                            ویرایش پروفایل
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- مودال حذف حساب کاربری -->
+    <div id="deleteAccountModal" class="fixed inset-0 z-50 overflow-y-auto hidden">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <!-- Overlay -->
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" 
+                 onclick="closeDeleteAccountModal()"></div>
+
+            <!-- محتوای مودال -->
+            <div class="inline-block align-bottom bg-white rounded-2xl text-right overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                <div class="bg-gradient-to-r from-rose-600 to-pink-600 px-6 py-4">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-white flex items-center">
+                            <i class="fas fa-exclamation-triangle ml-2"></i>
+                            حذف حساب کاربری
+                        </h3>
+                        <button onclick="closeDeleteAccountModal()" class="text-white hover:text-rose-200">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="bg-white px-6 py-6">
+                    <div class="text-center mb-6">
+                        <div class="h-16 w-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-rose-100 to-pink-100 flex items-center justify-center text-rose-600">
+                            <i class="fas fa-exclamation text-3xl"></i>
+                        </div>
+                        <h4 class="text-lg font-bold text-gray-800 mb-2">⚠️ هشدار جدی</h4>
+                        <p class="text-gray-600 mb-4">آیا از حذف حساب کاربری خود مطمئن هستید؟</p>
+                    </div>
+                    
+                    <div class="bg-gradient-to-r from-rose-50 to-pink-50 p-4 rounded-xl border border-rose-100 mb-6">
+                        <h5 class="font-medium text-gray-800 mb-3">این عمل باعث می‌شود:</h5>
+                        <ul class="text-sm text-gray-600 space-y-2">
+                            <li class="flex items-center">
+                                <i class="fas fa-times ml-2 text-rose-500"></i>
+                                تمام اطلاعات پروفایل شما پاک می‌شود
+                            </li>
+                            <li class="flex items-center">
+                                <i class="fas fa-times ml-2 text-rose-500"></i>
+                                تمام سوالات ارسالی شما حذف می‌شود
+                            </li>
+                            <li class="flex items-center">
+                                <i class="fas fa-times ml-2 text-rose-500"></i>
+                                تمام امتیازات شما از بین می‌رود
+                            </li>
+                            <li class="flex items-center">
+                                <i class="fas fa-times ml-2 text-rose-500"></i>
+                                این عمل غیرقابل برگشت است
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label for="deleteConfirmText" class="block text-sm font-medium text-gray-700 mb-2">
+                            برای تأیید، عبارت زیر را تایپ کنید:
+                        </label>
+                        <div class="bg-gray-50 p-3 rounded-xl mb-3 text-center">
+                            <code class="text-gray-800 font-mono">حذف حساب کاربری</code>
+                        </div>
+                        <input type="text" id="deleteConfirmText" 
+                               class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-all duration-300 bg-gray-50"
+                               placeholder="عبارت بالا را تایپ کنید">
+                        <div id="deleteTextError" class="mt-2 text-sm text-rose-600 hidden">
+                            <i class="fas fa-times-circle ml-1"></i>
+                            عبارت وارد شده صحیح نیست
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <button onclick="closeDeleteAccountModal()" 
+                                class="flex-1 px-4 py-3 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 rounded-xl hover:from-gray-200 hover:to-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-all duration-300 font-medium">
+                            انصراف
+                        </button>
+                        <button onclick="confirmDeleteAccount()" 
+                                class="flex-1 px-4 py-3 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl hover:from-rose-600 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 transition-all duration-300 font-medium">
+                            حذف حساب کاربری
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- مودال ویرایش سوال -->
     <div id="editQuestionModal" class="modal">
@@ -595,15 +832,27 @@
                         <h2 class="mr-4 text-xl font-semibold text-gray-800" id="adminPageTitle">داشبورد مدیریت</h2>
                     </div>
                     <div class="flex items-center">
-                        <div class="ml-4 relative">
-                            <div class="h-10 w-10 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 flex items-center justify-center text-purple-600 cursor-pointer">
+                        <div class="ml-4 relative group">
+                            <div class="h-10 w-10 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 flex items-center justify-center text-purple-600 cursor-pointer hover:scale-110 transition-transform duration-200">
                                 <i class="fas fa-bell"></i>
                             </div>
                             <span class="absolute top-0 left-0 h-4 w-4 bg-gradient-to-r from-rose-500 to-pink-600 rounded-full text-xs text-white flex items-center justify-center">۵</span>
+                            <!-- Tooltip کوچک -->
+                            <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+                                اطلاعیه‌ها
+                                <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                            </div>
                         </div>
-                        <div class="ml-4">
-                            <div class="h-10 w-10 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 flex items-center justify-center text-purple-600">
+                        <div class="ml-4 relative group">
+                            <div class="h-10 w-10 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 flex items-center justify-center text-purple-600 cursor-pointer hover:scale-110 transition-transform duration-200"
+                                 onclick="toggleUserInfoPopup()"
+                                 id="adminHeaderAvatarBtn">
                                 <i class="fas fa-user-shield"></i>
+                            </div>
+                            <!-- Tooltip کوچک -->
+                            <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+                                اطلاعات کاربری
+                                <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
                             </div>
                         </div>
                         <span class="mr-2 text-gray-800 hidden md:inline">مدیر سیستم</span>
@@ -1135,7 +1384,7 @@
                     
                     <!-- اطلاعات کاربر -->
                     <div class="text-center">
-                        <h2 class="text-lg font-bold text-white mb-1">کاربر عادی</h2>
+                        <h2 class="text-lg font-bold text-white mb-1 user-name-display">کاربر عادی</h2>
                         <div class="inline-flex items-center bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full">
                             <span class="text-xs text-white">سطح دسترسی: عادی</span>
                             <i class="fas fa-star text-amber-300 text-xs mr-2"></i>
@@ -1149,6 +1398,10 @@
                 <a href="#" class="flex items-center px-4 py-3 sidebar-item active" data-page="userDashboard">
                     <i class="fas fa-tachometer-alt ml-3"></i>
                     <span>داشبورد کاربری</span>
+                </a> 
+                     <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="focusMode">
+                    <i class="fas fa-hourglass-half ml-3 flex-shrink-0"></i>
+                    <span>حالت فوکوس</span>
                 </a>
                 <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="addQuestion">
                     <i class="fas fa-plus-circle ml-3"></i>
@@ -1162,10 +1415,7 @@
                     <i class="fas fa-chart-line ml-3"></i>
                     <span>امتیازات من</span>
                 </a>
-                <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="focusMode">
-                    <i class="fas fa-hourglass-half ml-3 flex-shrink-0"></i>
-                    <span>حالت فوکوس</span>
-                </a>
+         
                 <!-- تنظیمات پروفایل -->
                 <a href="#" class="flex items-center px-4 py-3 sidebar-item" data-page="userSettings">
                     <i class="fas fa-cog ml-3"></i>
@@ -1190,18 +1440,30 @@
                         <h2 class="mr-4 text-xl font-semibold text-gray-800" id="userPageTitle">داشبورد کاربری</h2>
                     </div>
                     <div class="flex items-center">
-                        <div class="ml-4 relative">
-                            <div class="h-10 w-10 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 flex items-center justify-center text-purple-600 cursor-pointer">
+                        <div class="ml-4 relative group">
+                            <div class="h-10 w-10 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 flex items-center justify-center text-purple-600 cursor-pointer hover:scale-110 transition-transform duration-200">
                                 <i class="fas fa-bell"></i>
                             </div>
                             <span class="absolute top-0 left-0 h-4 w-4 bg-gradient-to-r from-rose-500 to-pink-600 rounded-full text-xs text-white flex items-center justify-center">۳</span>
-                        </div>
-                        <div class="ml-4">
-                            <div class="h-10 w-10 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 flex items-center justify-center text-purple-600">
-                                <i class="fas fa-user"></i>
+                            <!-- Tooltip کوچک -->
+                            <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+                                اطلاعیه‌ها
+                                <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
                             </div>
                         </div>
-                        <span class="mr-2 text-gray-800 hidden md:inline">کاربر عادی</span>
+                        <div class="ml-4 relative group">
+                            <div class="h-10 w-10 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 flex items-center justify-center text-purple-600 cursor-pointer hover:scale-110 transition-transform duration-200"
+                                 onclick="toggleUserInfoPopup()"
+                                 id="headerAvatarBtn">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <!-- Tooltip کوچک -->
+                            <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+                                اطلاعات کاربری
+                                <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                            </div>
+                        </div>
+                        <span class="mr-2 text-gray-800 hidden md:inline user-name-display">کاربر عادی</span>
                     </div>
                 </div>
             </header>
@@ -1741,33 +2003,41 @@
             </div>
         </div>
         
-        <!-- ستون راست: آمار و دروس -->
-        <div class="space-y-4 md:space-y-6">
-            <!-- آمار هفتگی -->
-            <div class="bg-white rounded-2xl shadow p-5 md:p-6 card-hover">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg md:text-xl font-bold text-gray-800">📊 نمودار هفتگی</h3>
-                    <button id="refreshChartBtn"
-                            class="px-3 py-1.5 bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 rounded-lg hover:from-purple-200 hover:to-pink-200 transition-all text-xs flex items-center gap-1">
-                        <i class="fas fa-sync-alt"></i> بروزرسانی
-                    </button>
-                </div>
-                
-                <div class="h-48 md:h-56 lg:h-64">
-                    <canvas id="weeklyChart"></canvas>
-                </div>
-                
-                <div class="mt-4 pt-3 md:pt-4 border-t border-gray-200">
-                    <div class="flex justify-between text-xs md:text-sm">
-                        <span class="text-gray-700">میانگین روزانه</span>
-                        <span class="text-gray-800 font-bold" id="dailyAverage">۰ ساعت</span>
+<!-- ستون راست: آمار و دروس -->
+<div class="space-y-4 md:space-y-6">
+    <!-- آمار هفتگی -->
+    <div class="bg-white rounded-2xl shadow p-5 md:p-6 card-hover">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg md:text-xl font-bold text-gray-800">📊 نمودار هفتگی</h3>
+            <button id="refreshChartBtn"
+                    class="px-3 py-1.5 bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 rounded-lg hover:from-purple-200 hover:to-pink-200 transition-all text-xs flex items-center gap-1">
+                <i class="fas fa-sync-alt"></i> بروزرسانی
+            </button>
+        </div>
+        
+        <div class="relative h-48 md:h-56 lg:h-64">
+            <canvas id="weeklyChart" class="absolute inset-0"></canvas>
+        </div>
+        
+        <div class="mt-4 pt-3 md:pt-4 border-t border-gray-200">
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-gradient-to-r from-purple-50 to-pink-50 p-3 rounded-lg border border-purple-100">
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded-full bg-purple-500 flex-shrink-0"></div>
+                        <span class="text-xs md:text-sm text-gray-700 flex-1">میانگین روزانه</span>
+                        <span class="text-xs md:text-sm font-bold text-gray-800" id="dailyAverage">۰ ساعت</span>
                     </div>
-                    <div class="flex justify-between text-xs md:text-sm mt-1">
-                        <span class="text-gray-700">مجموع این هفته</span>
-                        <span class="text-gray-800 font-bold" id="weeklyTotal">۰ ساعت</span>
+                </div>
+                <div class="bg-gradient-to-r from-emerald-50 to-teal-50 p-3 rounded-lg border border-emerald-100">
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded-full bg-emerald-500 flex-shrink-0"></div>
+                        <span class="text-xs md:text-sm text-gray-700 flex-1">مجموع هفته</span>
+                        <span class="text-xs md:text-sm font-bold text-gray-800" id="weeklyTotal">۰ ساعت</span>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
             
             <!-- مدیریت دروس (ساده‌سازی شده) -->
             <div class="bg-white rounded-2xl shadow p-5 md:p-6 card-hover">
@@ -1977,6 +2247,309 @@
 
 <!-- Container برای مودال‌های دیگر -->
 <div id="modalContainer"></div>
+
+                <!-- تنظیمات پروفایل کاربر -->
+                <div id="userSettings" class="hidden fade-in">
+                    <div class="bg-white rounded-2xl shadow p-6 card-hover mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-6">📝 اطلاعات شخصی</h3>
+                        
+                        <form id="profileForm">
+                            <!-- آپلود آواتار در بالای فرم -->
+                            <div class="flex flex-col items-center mb-6">
+                                <div class="relative mb-4">
+                                    <div id="profileAvatar" class="h-32 w-32 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 flex items-center justify-center shadow-lg border-4 border-white relative overflow-hidden">
+                                        <i class="fas fa-user text-5xl text-purple-600"></i>
+                                        <!-- بارگذاری تصویر -->
+                                        <div id="avatarUpload" class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300 cursor-pointer rounded-full">
+                                            <i class="fas fa-camera text-white text-2xl"></i>
+                                        </div>
+                                    </div>
+                                    <input type="file" id="avatarInput" accept="image/*" class="hidden">
+                                    
+                                    <!-- وضعیت آنلاین -->
+                                    <div class="absolute bottom-4 right-4 h-5 w-5 bg-emerald-500 rounded-full border-2 border-white shadow-lg"></div>
+                                </div>
+                                
+                                <div class="flex gap-3 mb-4">
+                                    <button type="button" onclick="document.getElementById('avatarInput').click()" 
+                                            class="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-lg hover:from-purple-600 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-300">
+                                        <i class="fas fa-upload ml-2"></i>
+                                        آپلود تصویر
+                                    </button>
+                                    <button type="button" onclick="removeAvatar()" 
+                                            class="px-4 py-2 bg-gradient-to-r from-gray-400 to-gray-500 text-white rounded-lg hover:from-gray-500 hover:to-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-all duration-300">
+                                        <i class="fas fa-trash-alt ml-2"></i>
+                                        حذف
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                <div>
+                                    <label for="profileName" class="block text-sm font-medium text-gray-700 mb-2">نام و نام خانوادگی</label>
+                                    <input type="text" id="profileName" 
+                                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 bg-gray-50"
+                                           placeholder="نام خود را وارد کنید">
+                                </div>
+                                
+                                <div>
+                                    <label for="profileUsername" class="block text-sm font-medium text-gray-700 mb-2">نام کاربری</label>
+                                    <input type="text" id="profileUsername" 
+                                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 bg-gray-50"
+                                           placeholder="نام کاربری خود را وارد کنید">
+                                    <div id="usernameAvailability" class="mt-2 text-xs hidden">
+                                        <i class="fas fa-check-circle ml-1 text-emerald-500"></i>
+                                        <span class="text-emerald-600">نام کاربری آزاد است</span>
+                                    </div>
+                                    <div id="usernameError" class="mt-2 text-xs hidden">
+                                        <i class="fas fa-times-circle ml-1 text-rose-500"></i>
+                                        <span class="text-rose-600">نام کاربری قبلاً انتخاب شده</span>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label for="profileEmail" class="block text-sm font-medium text-gray-700 mb-2">آدرس ایمیل</label>
+                                    <input type="email" id="profileEmail" 
+                                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 bg-gray-50"
+                                           placeholder="email@example.com">
+                                </div>
+                                
+                                <div>
+                                    <label for="profilePhone" class="block text-sm font-medium text-gray-700 mb-2">شماره تماس</label>
+                                    <input type="tel" id="profilePhone" 
+                                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 bg-gray-50"
+                                           placeholder="09xxxxxxxxx">
+                                </div>
+                                
+                                <div>
+                                    <label for="profileGrade" class="block text-sm font-medium text-gray-700 mb-2">پایه درسی</label>
+                                    <select id="profileGrade" 
+                                            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 bg-gray-50">
+                                        <option value="">انتخاب پایه</option>
+                                        <option value="7">هفتم</option>
+                                        <option value="8">هشتم</option>
+                                        <option value="9">نهم</option>
+                                        <option value="10">دهم</option>
+                                        <option value="11">یازدهم</option>
+                                        <option value="12">دوازدهم</option>
+                                        <option value="13">پیش‌دانشگاهی</option>
+                                        <option value="14">کارشناسی</option>
+                                        <option value="15">کارشناسی ارشد</option>
+                                        <option value="16">دکتری</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label for="profileField" class="block text-sm font-medium text-gray-700 mb-2">رشته تحصیلی</label>
+                                    <select id="profileField" 
+                                            class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 bg-gray-50">
+                                        <option value="">انتخاب رشته</option>
+                                        <option value="ریاضی">ریاضی</option>
+                                        <option value="تجربی">تجربی</option>
+                                        <option value="انسانی">انسانی</option>
+                                        <option value="هنر">هنر</option>
+                                        <option value="زبان">زبان</option>
+                                        <option value="فنی">فنی و حرفه‌ای</option>
+                                        <option value="کامپیوتر">کامپیوتر</option>
+                                        <option value="برق">برق</option>
+                                        <option value="مکانیک">مکانیک</option>
+                                        <option value="عمومی">عمومی</option>
+                                        <option value="دیگر">دیگر</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-6">
+                                <label for="profileBio" class="block text-sm font-medium text-gray-700 mb-2">درباره من</label>
+                                <textarea id="profileBio" rows="3" 
+                                          class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 bg-gray-50 resize-none"
+                                          placeholder="یک توضیح کوتاه درباره خودتان بنویسید..."></textarea>
+                                <p class="text-xs text-gray-500 mt-2">حداکثر ۲۰۰ کاراکتر</p>
+                            </div>
+                            
+                            <div class="flex justify-end">
+                                <button type="submit" 
+                                        class="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-medium rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-300 transform hover:-translate-y-0.5 shadow-lg hover:shadow-xl">
+                                    ذخیره تغییرات
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- بخش تغییر رمز عبور -->
+                    <div class="bg-white rounded-2xl shadow p-6 card-hover mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-6">🔐 تغییر رمز عبور</h3>
+                        
+                        <form id="passwordForm">
+                            <div class="space-y-4 mb-6">
+                                <div>
+                                    <label for="currentPassword" class="block text-sm font-medium text-gray-700 mb-2">رمز عبور فعلی</label>
+                                    <div class="relative">
+                                        <input type="password" id="currentPassword" 
+                                               class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 bg-gray-50 pr-10"
+                                               placeholder="رمز عبور فعلی را وارد کنید">
+                                        <button type="button" onclick="togglePassword('currentPassword')" 
+                                                class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label for="newPassword" class="block text-sm font-medium text-gray-700 mb-2">رمز عبور جدید</label>
+                                    <div class="relative">
+                                        <input type="password" id="newPassword" 
+                                               class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 bg-gray-50 pr-10"
+                                               placeholder="رمز عبور جدید را وارد کنید">
+                                        <button type="button" onclick="togglePassword('newPassword')" 
+                                                class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                    <div class="mt-2">
+                                        <div class="text-xs text-gray-600 mb-1">قدرت رمز عبور:</div>
+                                        <div class="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                                            <div id="passwordStrength" class="h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-2">تکرار رمز عبور جدید</label>
+                                    <div class="relative">
+                                        <input type="password" id="confirmPassword" 
+                                               class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 bg-gray-50 pr-10"
+                                               placeholder="رمز عبور جدید را تکرار کنید">
+                                        <button type="button" onclick="togglePassword('confirmPassword')" 
+                                                class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                    <div id="passwordMatch" class="mt-2 text-sm hidden"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex justify-end">
+                                <button type="submit" 
+                                        class="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-medium rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all duration-300 transform hover:-translate-y-0.5 shadow-lg hover:shadow-xl">
+                                    تغییر رمز عبور
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- تنظیمات نوتیفیکیشن -->
+                    <div class="bg-white rounded-2xl shadow p-6 card-hover mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">🔔 تنظیمات اعلان‌ها</h3>
+                        
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-800">اعلان‌های ایمیل</p>
+                                    <p class="text-xs text-gray-600">دریافت ایمیل برای فعالیت‌های جدید</p>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" class="sr-only peer" id="emailNotifications" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-800">اعلان سوالات</p>
+                                    <p class="text-xs text-gray-600">تغییر وضعیت سوالات ارسالی</p>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" class="sr-only peer" id="questionNotifications" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-800">اعلان امتیازات</p>
+                                    <p class="text-xs text-gray-600">دریافت امتیاز جدید</p>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" class="sr-only peer" id="scoreNotifications" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-800">اعلان هفتگی</p>
+                                    <p class="text-xs text-gray-600">گزارش عملکرد هفتگی</p>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" class="sr-only peer" id="weeklyReportNotifications">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 pt-4 border-t border-gray-100">
+                            <button onclick="saveNotificationSettings()" 
+                                    class="w-full px-4 py-3 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-800 rounded-xl hover:from-gray-200 hover:to-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-all duration-300 font-medium">
+                                ذخیره تنظیمات اعلان‌ها
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- تنظیمات حریم خصوصی -->
+                    <div class="bg-white rounded-2xl shadow p-6 card-hover">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">🛡️ حریم خصوصی</h3>
+                        
+                        <div class="space-y-4 mb-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-800">نمایش پروفایل</p>
+                                    <p class="text-xs text-gray-600">قابل مشاهده برای دیگر کاربران</p>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" class="sr-only peer" id="profileVisibility" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-800">نمایش فعالیت‌ها</p>
+                                    <p class="text-xs text-gray-600">نمایش سوالات و امتیازات شما</p>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" class="sr-only peer" id="activityVisibility" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-gray-800">نمایش وضعیت آنلاین</p>
+                                    <p class="text-xs text-gray-600">نمایش آنلاین بودن شما</p>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" class="sr-only peer" id="onlineStatusVisibility" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="pt-4 border-t border-gray-100">
+                            <button onclick="exportData()" 
+                                    class="w-full mb-3 px-4 py-3 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 rounded-xl hover:from-blue-200 hover:to-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition-all duration-300 font-medium flex items-center justify-center">
+                                <i class="fas fa-download ml-2"></i>
+                                خروجی گرفتن از اطلاعات
+                            </button>
+                            
+                            <button onclick="showDeleteAccountModal()" 
+                                    class="w-full px-4 py-3 bg-gradient-to-r from-rose-100 to-rose-200 text-rose-800 rounded-xl hover:from-rose-200 hover:to-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-400 focus:ring-offset-2 transition-all duration-300 font-medium flex items-center justify-center">
+                                <i class="fas fa-trash-alt ml-2"></i>
+                                حذف حساب کاربری
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </main>
         </div>
     </div>
